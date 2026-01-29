@@ -17,3 +17,9 @@ export const getNotifications= async(req: AuthRequest, res: Response)=>{
         return res.status(500).json(message)
     }
 }
+
+export const markAsRead= async(req:any, res:Response)=>{
+    const repo= AppDataSource.getRepository(Notification)
+    await repo.update(req.params.id,{isRead:true})
+    res.json({message:"Notification marked as read"})
+}

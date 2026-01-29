@@ -7,7 +7,7 @@ const router= Router()
 
 router.get('/',getProperties)
 router.get('/:id',getPropertyById)
-router.post('/',createProperty)
+router.post('/',authMiddleware(['seller','agent']), createProperty)
 router.delete('/:id',authMiddleware(['seller','agent']),propertyOwnerOnly,deleteProperty)
 router.put('/:id',authMiddleware(['seller','agent']),propertyOwnerOnly, updateProperty)
 

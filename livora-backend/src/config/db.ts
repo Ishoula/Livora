@@ -6,20 +6,21 @@ import { PropertyImage } from "../entities/PropertyImage";
 import { Favorite } from "../entities/Favorite";
 import { Message } from "../entities/Message";
 import { Notification } from "../entities/Notification";
+import { RefreshToken } from "../entities/RefreshToken";
+import { config } from "./env";
 
-const host = process.env.DB_HOST;
-const username = process.env.DB_USER;
-const password = process.env.DB_PASS;
-const database = process.env.DB_NAME;
+const { host, db_port, username, password, database } = config;
 
 if (!host || !username || !password || !database) {
-  throw new Error("Database environment variables are missing!");
+  throw new Error(
+    "Database environment variables are missing! Please set DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME."
+  );
 }
 
 export const AppDataSource = new DataSource({
   type: "postgres",
   host,
-  port: 5432,
+  port: db_port,
   username,
   password,
   database,
@@ -31,6 +32,7 @@ export const AppDataSource = new DataSource({
     PropertyImage,
     Favorite,
     Message,
-    Notification
+    Notification,
+    RefreshToken
   ]
 });

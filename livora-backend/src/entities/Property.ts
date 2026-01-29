@@ -20,49 +20,49 @@ export enum PropertyStatus {
 
 @Entity("properties")
 export class Property {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn("increment")
+  id!: number;
 
-  @Column()
-  title: string;
+  @Column({ type: "varchar", length: 255 })
+  title!: string;
 
-  @Column("text", { nullable: true })
-  description: string;
+  @Column({ type: "text", nullable: true })
+  description!: string | null;
 
-  @Column("decimal", { precision: 12, scale: 2 })
-  price: number;
+  @Column({ type: "decimal", precision: 12, scale: 2 })
+  price!: number;
 
-  @Column({ nullable: true })
-  propertyType: string;
+  @Column({ type: "varchar", length: 100, nullable: true })
+  propertyType!: string | null;
 
-  @Column({ nullable: true })
-  location: string;
+  @Column({ type: "varchar", length: 255, nullable: true })
+  location!: string | null;
 
-  @Column({ nullable: true })
-  bedrooms: number;
+  @Column({ type: "int", nullable: true })
+  bedrooms!: number | null;
 
-  @Column({ nullable: true })
-  bathrooms: number;
+  @Column({ type: "int", nullable: true })
+  bathrooms!: number | null;
 
   @Column({
     type: "enum",
     enum: PropertyStatus,
     default: PropertyStatus.AVAILABLE
   })
-  status: PropertyStatus;
+  status!: PropertyStatus;
 
   @ManyToOne(() => User, user => user.properties, { onDelete: "CASCADE" })
-  owner: User;
+  owner!: User;
 
   @OneToMany(() => PropertyImage, image => image.property)
-  images: PropertyImage[];
+  images!: PropertyImage[];
 
   @OneToMany(() => Favorite, favorite => favorite.property)
-  favorites: Favorite[];
+  favorites!: Favorite[];
 
   @OneToMany(() => Message, message => message.property)
-  messages: Message[];
+  messages!: Message[];
 
-  @CreateDateColumn()
-  createdAt: Date;
+  @CreateDateColumn({ type: "timestamp" })
+  createdAt!: Date;
 }

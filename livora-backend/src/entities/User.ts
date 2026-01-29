@@ -9,6 +9,7 @@ import { Property } from "./Property";
 import { Favorite } from "./Favorite";
 import { Message } from "./Message";
 import { Notification } from "./Notification";
+import { RefreshToken } from "./RefreshToken";
 
 export enum UserRole {
   BUYER = "buyer",
@@ -22,16 +23,16 @@ export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ length: 100 })
+  @Column({ type: "varchar", length: 100 })
   fullName: string;
 
-  @Column({ unique: true })
+  @Column({ type: "varchar", unique: true })
   email: string;
 
-  @Column({ unique: true, nullable: true })
+  @Column({ type: "varchar", length: 20, unique: true, nullable: true })
   phone: string;
 
-  @Column()
+  @Column({ type: "varchar", length: 255 })
   passwordHash: string;
 
   @Column({
@@ -58,4 +59,7 @@ export class User {
 
   @OneToMany(() => Notification, notification => notification.user)
   notifications: Notification[];
+
+  @OneToMany(() => RefreshToken, refreshToken => refreshToken.user)
+  refreshTokens: RefreshToken[];
 }

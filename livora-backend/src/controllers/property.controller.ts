@@ -37,7 +37,7 @@ export const getPropertyById = async (req: AuthRequest, res: Response) => {
         const propertyRepo = AppDataSource.getRepository(Property)
         const property = await propertyRepo.findOne({
             where: { id },
-            relations:['owner','image']
+            relations:['owner','images']
         })
         if(!property){
             return res.status(404).json({message:"Property not found"})
