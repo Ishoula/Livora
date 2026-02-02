@@ -7,7 +7,7 @@ import { Auth } from "typeorm";
 
 export const addFavorite= async(req: AuthRequest, res: Response)=>{
     try{
-        const id= Number(req.params.id)
+        const id= Number(req.body.id)
         if(isNaN(id)){
             return res.status(400).json({message:"Invalid property Id"})
         }
