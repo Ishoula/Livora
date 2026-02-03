@@ -7,11 +7,15 @@ import messageRoutes from './routes/message.routes';
 import notificationRoutes from './routes/notification.routes';
 import { notFound } from './middlewares/nonFound.middleware';
 import { errorHandler } from './middlewares/error.middleware';
+import swaggerUi from "swagger-ui-express";
+import { swaggerSpec } from "./config/swagger";
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/favorites', favoriteRoutes);
