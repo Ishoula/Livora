@@ -7,7 +7,12 @@ export const getProfile = async (req: any, res: Response) => {
         const repo = AppDataSource.getRepository(User)
         const user = await repo.findOneBy({ id: req.user.id })
 
-        res.status(200).json(user)
+        res.status(200).json({
+            email:user?.email,
+            fullName:user?.fullName,
+            phone:user?.phone,
+            role:user?.role
+        })
     } catch (err) {
         const message = err instanceof Error ? err.message : "Internal server error"
         return res.status(500).json(message)
@@ -17,7 +22,14 @@ export const getProfile = async (req: any, res: Response) => {
 export const getAllUsers = async (_req: Request, res: Response) => {
     try {
         const repo = AppDataSource.getRepository(User)
-        const users = await repo.find()
+        const users = await repo.find({
+            select: {
+                fullName: true,
+                email: true,
+                phone: true,
+                role: true,
+            }
+        })
         res.json(users)
     } catch (err) {
         const message = err instanceof Error ? err.message : "Internal server error"

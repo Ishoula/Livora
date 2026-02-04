@@ -1,4 +1,4 @@
-import { Response, Request } from "express";
+import { Response } from "express";
 import { AppDataSource } from "../config/db";
 import { Message } from "../entities/Message";
 import { Property } from "../entities/Property";
@@ -9,7 +9,8 @@ import { MessageParamsInput, SendMessageInput } from "../validators/message.vali
 
 export const sendMessage = async (req: AuthRequest, res: Response) => {
     try {
-        const { propertyId, message, receiverId } = req.body as SendMessageInput;
+        const { propertyId } = req.params as unknown as MessageParamsInput;
+        const { message, receiverId } = req.body as SendMessageInput;
         const sender = req.user;
 
         if (!sender?.id) {
@@ -32,14 +33,11 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
         }
 
         const isOwnerSending = sender.id === propertyOwnerId;
-        let targetReceiverId = receiverId ?? propertyOwnerId;
+
+        let targetReceiverId = isOwnerSending ? receiverId : propertyOwnerId;
 
         if (!targetReceiverId || targetReceiverId === sender.id) {
             return res.status(400).json({ message: "A valid receiverId is required" });
-        }
-
-        if (!isOwnerSending && targetReceiverId !== propertyOwnerId) {
-            targetReceiverId = propertyOwnerId;
         }
 
         if (isOwnerSending && !receiverId) {
@@ -77,7 +75,7 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
         if (targetReceiverId !== sender.id) {
             const notification = notificationRepo.create({
                 user: { id: targetReceiverId } as User,
-                message: `You have received a new message from %${sender.fullName}`
+                message: `You have received a new message about ${property.title}`
             });
             await notificationRepo.save(notification);
         }
@@ -111,7 +109,10 @@ export const getMessagesForProperty = async (req: AuthRequest, res: Response) =>
 
 export const deleteMessage = async (req: AuthRequest, res: Response) => {
     try {
-        const messageId = Number(req.params.id)
+        const messageId = Number(req.params.messageId)
+        if (isNaN(messageId)) {
+            return res.status(400).json({ message: "Invalid messageId" })
+        }
         const userId=req.user.id
 
         const messageRepo=AppDataSource.getRepository(Message)
@@ -124,7 +125,7 @@ export const deleteMessage = async (req: AuthRequest, res: Response) => {
             return res.status(404).json({message:"Message not found"})
         }
         if(message.sender.id!==userId){
-            return res.status(403).json({message:"You have no permssion to delete this message"})
+            return res.status(403).json({message:"You have no permission to delete this message"})
         }
 
         await messageRepo.remove(message)

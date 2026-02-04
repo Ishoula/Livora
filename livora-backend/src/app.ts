@@ -1,10 +1,13 @@
 import express from 'express';
 import cors from 'cors';
+
+import userRoutes from './routes/user.routes'
 import authRoutes from './routes/auth.routes';
 import favoriteRoutes from './routes/favorite.routes';
 import propertyRoutes from './routes/property.routes';
 import messageRoutes from './routes/message.routes';
 import notificationRoutes from './routes/notification.routes';
+
 import { notFound } from './middlewares/nonFound.middleware';
 import { errorHandler } from './middlewares/error.middleware';
 
@@ -13,6 +16,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.use('/api/users',userRoutes)
 app.use('/api/auth', authRoutes);
 app.use('/api/favorites', favoriteRoutes);
 app.use('/api/properties', propertyRoutes);

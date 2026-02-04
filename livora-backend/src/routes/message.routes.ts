@@ -1,14 +1,15 @@
 import { Router } from "express";
-import { getMessagesForProperty, sendMessage } from "../controllers/message.controller";
+import { deleteMessage, getMessagesForProperty, sendMessage } from "../controllers/message.controller";
 import { authMiddleware } from "../middlewares/auth.middleware";
 import { validate } from "../middlewares/validate.middleware";
-import { messageParamsSchema, sendMessageSchema } from "../validators/message.validator";
+import { deleteMessageParamsSchema, messageParamsSchema, sendMessageSchema } from "../validators/message.validator";
 
 const router= Router()
 
 router.post(
-    "/",
+    "/property/:propertyId",
     authMiddleware(['buyer','seller','agent']),
+    validate(messageParamsSchema, 'params'),
     validate(sendMessageSchema),
     sendMessage
 )
@@ -18,5 +19,12 @@ router.get(
     authMiddleware(['buyer','seller','agent']),
     validate(messageParamsSchema, 'params'),
     getMessagesForProperty
+)
+
+router.delete(
+    '/property/:messageId',
+    authMiddleware(['buyer','seller','agent']),
+    validate(deleteMessageParamsSchema, 'params'),
+    deleteMessage
 )
 export default router;
