@@ -1,25 +1,45 @@
 import React, { useState } from 'react';
 import { 
   StyleSheet, View, Text, TextInput, TouchableOpacity, 
-  ImageBackground, SafeAreaView, ScrollView, StatusBar 
+  ImageBackground, SafeAreaView, ScrollView, StatusBar, Alert 
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { register } from '../../lib/auth';
 
 const SignupPage = () => {
   const router = useRouter();
   // Input states based on FR-1 and visual design [cite: 245]
-  const [name, setName] = useState('');
-  const [dob, setDob] = useState(''); 
-  const [email, setEmail] = useState('');
+  const [name, setName] = useState(''  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [accountType, setAccountType] = useState('Agent'); // Roles from Section 2.3 
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSignup = () => {
-    // Logic for UC-1: Register Account [cite: 187, 246]
-    // Validates data and prepares for backend hashing [cite: 125, 246]
-    console.log("Registering:", { name, email, password, accountType });
+  const handleSignup = async () => {
+    if (!name.trim() || !email.trim() || !password) {
+      Alert.alert('Missing details', 'Please enter your name, email, and password.');
+      return;
+    }
+
+    const role = accountType === 'Tenant' ? 'buyer' : 'agent';
+
+    try {
+      setIsSubmitting(true);
+      await register({
+        fullName: name.trim(),
+        email: email.trim(),
+        phone: phone.trim() ? phone.trim() : undefined,
+        password,
+        role
+      });
+      router.replace('/');
+    } catch (err: any) {
+      Alert.alert('Sign up failed', err?.message ?? 'Unable to create account.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -67,19 +87,20 @@ const SignupPage = () => {
                 />
                 <TextInput 
                   style={styles.input} 
-                  placeholder="Date of Birth" 
-                  placeholderTextColor="#888"
-                  value={dob}
-                  onChangeText={setDob}
-                />
-                <TextInput 
-                  style={styles.input} 
                   placeholder="Email" 
                   placeholderTextColor="#888"
                   keyboardType="email-address"
                   autoCapitalize="none"
                   value={email}
                   onChangeText={setEmail}
+                />
+                <TextInput 
+                  style={styles.input} 
+                  placeholder="Phone (optional)" 
+                  placeholderTextColor="#888"
+                  keyboardType="phone-pad"
+                  value={phone}
+                  onChangeText={setPhone}
                 />
                 <View style={styles.passwordWrapper}>
                   <TextInput 
@@ -121,7 +142,7 @@ const SignupPage = () => {
                 </Text>
 
                 {/* Primary Signup Button */}
-                <TouchableOpacity style={styles.signupButton} onPress={handleSignup}>
+                <TouchableOpacity style={styles.signupButton} onPress={handleSignup} disabled={isSubmitting}>
                   <Text style={styles.signupButtonText}>SIGN UP</Text>
                 </TouchableOpacity>
               </View>

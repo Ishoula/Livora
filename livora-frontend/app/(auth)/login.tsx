@@ -1,21 +1,34 @@
 import React, { useState } from 'react';
 import { 
   StyleSheet, View, Text, TextInput, TouchableOpacity, 
-  ImageBackground, SafeAreaView, StatusBar 
+  ImageBackground, SafeAreaView, StatusBar, Alert 
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons'; // Assuming Expo for icons
+import { login } from '../../lib/auth';
 
 const LoginPage = () => {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleLogin = () => {
-    // Logic for UC-2: Login [cite: 187]
-    // Processing: Validate credentials, generate JWT [cite: 250]
-    console.log("Logging in with:", email, password);
+  const handleLogin = async () => {
+    if (!email.trim() || !password) {
+      Alert.alert('Missing details', 'Please enter your email and password.');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await login({ email: email.trim(), password });
+      router.replace('/');
+    } catch (err: any) {
+      Alert.alert('Login failed', err?.message ?? 'Unable to login.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -85,7 +98,7 @@ const LoginPage = () => {
             </TouchableOpacity>
 
             {/* Login Button */}
-            <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+            <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={isSubmitting}>
               <Text style={styles.loginButtonText}>LOGIN  →</Text>
             </TouchableOpacity>
 
