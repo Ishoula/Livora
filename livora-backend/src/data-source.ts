@@ -24,10 +24,10 @@ export const AppDataSource = new DataSource({
   username,
   password,
   database,
-  synchronize: false,
+  synchronize: true,
   logging: false,
   entities: [User, Property, PropertyImage, Favorite, Message, Notification, RefreshToken],
-  migrations: ["dist/migrations/*.js"],
+  migrations: ["src/migrations/*.ts", "dist/migrations/*.js"],
 });
 
 export default AppDataSource;

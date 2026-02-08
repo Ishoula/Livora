@@ -44,6 +44,9 @@ export class Property {
   @Column({ type: "int", nullable: true })
   bathrooms!: number | null;
 
+  @Column({type:"text", nullable:true})
+  image_url!:string |null;
+  
   @Column({
     type: "enum",
     enum: PropertyStatus,

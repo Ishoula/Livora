@@ -23,7 +23,7 @@ const LoginPage = () => {
     try {
       setIsSubmitting(true);
       await login({ email: email.trim(), password });
-      router.replace('/');
+      router.replace('/tabs/home');
     } catch (err: any) {
       Alert.alert('Login failed', err?.message ?? 'Unable to login.');
     } finally {

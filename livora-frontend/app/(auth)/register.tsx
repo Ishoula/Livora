@@ -10,7 +10,8 @@ import { register } from '../../lib/auth';
 const SignupPage = () => {
   const router = useRouter();
   // Input states based on FR-1 and visual design [cite: 245]
-  const [name, setName] = useState(''  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [accountType, setAccountType] = useState('Agent'); // Roles from Section 2.3 
