@@ -6,6 +6,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { register } from '../../lib/auth';
+import { ApiError } from '../../lib/api';
 
 const SignupPage = () => {
   const router = useRouter();
@@ -17,6 +18,23 @@ const SignupPage = () => {
   const [accountType, setAccountType] = useState('Agent'); // Roles from Section 2.3 
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const getSignupErrorMessage = (err: unknown): string => {
+    if (err instanceof ApiError) {
+      const msg = (err.message || '').toLowerCase();
+
+      if (err.status === 409 || msg.includes('already') || msg.includes('exists')) {
+        return 'This email is already registered. Try logging in instead.';
+      }
+
+      if (err.status === 400) return 'Please check your details and try again.';
+      if (err.status >= 500) return 'Server error. Please try again shortly.';
+      return err.message || 'Unable to create account.';
+    }
+
+    if (err instanceof Error && err.message) return err.message;
+    return 'Unable to create account.';
+  };
 
   const handleSignup = async () => {
     if (!name.trim() || !email.trim() || !password) {
@@ -36,8 +54,8 @@ const SignupPage = () => {
         role
       });
       router.replace('/');
-    } catch (err: any) {
-      Alert.alert('Sign up failed', err?.message ?? 'Unable to create account.');
+    } catch (err: unknown) {
+      Alert.alert('Sign up failed', getSignupErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }

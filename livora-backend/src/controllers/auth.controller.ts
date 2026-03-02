@@ -52,7 +52,7 @@ export const register = async (req: Request, res: Response) => {
     const existing = await userRepo.findOne({ where: { email } });
 
     if (existing) {
-      return res.status(400).json({
+      return res.status(409).json({
         message: "Account with email already exists"
       });
     }

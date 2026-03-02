@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { apiRequest } from '../../lib/api';
+import { getSession } from '../../lib/session';
 
 interface Property {
   id: number;
@@ -95,9 +96,13 @@ const HomePage = () => {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fullName, setFullName] = useState<string>('');
 
   useEffect(() => {
     let cancelled = false;
+
+    const session = getSession();
+    setFullName(session?.user.fullName ?? '');
 
     (async () => {
       setLoading(true);
@@ -131,7 +136,7 @@ const HomePage = () => {
       {/* Header Section */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.welcomeText}>Hello, User</Text>
+          <Text style={styles.welcomeText}>Hello{fullName ? `, ${fullName}` : ''}</Text>
           <Text style={styles.subHeader}>Find your dream home</Text>
         </View>
         <TouchableOpacity style={styles.notificationBtn}>

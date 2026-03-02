@@ -6,6 +6,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons'; // Assuming Expo for icons
 import { login } from '../../lib/auth';
+import { ApiError } from '../../lib/api';
 
 const LoginPage = () => {
   const router = useRouter();
@@ -13,6 +14,17 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const getLoginErrorMessage = (err: unknown): string => {
+    if (err instanceof ApiError) {
+      if (err.status === 401 || err.status === 403) return 'Incorrect email or password.';
+      if (err.status >= 500) return 'Server error. Please try again shortly.';
+      return err.message || 'Unable to login.';
+    }
+
+    if (err instanceof Error && err.message) return err.message;
+    return 'Unable to login.';
+  };
 
   const handleLogin = async () => {
     if (!email.trim() || !password) {
@@ -24,8 +36,8 @@ const LoginPage = () => {
       setIsSubmitting(true);
       await login({ email: email.trim(), password });
       router.replace('/tabs/home');
-    } catch (err: any) {
-      Alert.alert('Login failed', err?.message ?? 'Unable to login.');
+    } catch (err: unknown) {
+      Alert.alert('Login failed', getLoginErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
