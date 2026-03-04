@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { 
   StyleSheet, View, Text, TextInput, TouchableOpacity, 
   FlatList, Image, SafeAreaView, StatusBar, Alert
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+
 import { apiRequest } from '../../lib/api';
 import { getSession } from '../../lib/session';
 import { apiRequestAuth } from '../../lib/apiAuth';
@@ -109,6 +110,19 @@ const HomePage = () => {
   const [error, setError] = useState<string | null>(null);
   const [fullName, setFullName] = useState<string>('');
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
+
+  const sortedProperties = useMemo(() => {
+    const decorated = properties.map((p, index) => ({ p, index }));
+
+    decorated.sort((a, b) => {
+      const aFav = favoriteIds.has(a.p.id) ? 1 : 0;
+      const bFav = favoriteIds.has(b.p.id) ? 1 : 0;
+      if (aFav !== bFav) return bFav - aFav;
+      return a.index - b.index;
+    });
+
+    return decorated.map((x) => x.p);
+  }, [properties, favoriteIds]);
 
   const setFavoriteId = (propertyId: number, nextIsFavorite: boolean) => {
     setFavoriteIds((prev) => {
@@ -236,7 +250,7 @@ const HomePage = () => {
 
       {/* Property List (FR-8) */}
       <FlatList
-        data={properties}
+        data={sortedProperties}
         keyExtractor={(item) => String(item.id)}
         renderItem={({ item }) => <PropertyCard item={item} isFavorite={favoriteIds.has(item.id)} onToggleFavorite={toggleFavorite} />}
         contentContainerStyle={styles.listContent}
