@@ -4,6 +4,7 @@ import {
   FlatList, Image, SafeAreaView, StatusBar, Alert
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { apiRequest } from '../../lib/api';
 import { getSession } from '../../lib/session';
 import { apiRequestAuth } from '../../lib/apiAuth';
@@ -42,7 +43,6 @@ type ApiFavorite = {
     id: number;
   };
 };
-
 
 const toPropertyType = (value: unknown): Property['type'] => {
   if (value === 'Rent') return 'Rent';
@@ -141,6 +141,28 @@ const HomePage = () => {
     }
   };
 
+  const refreshFavorites = async () => {
+    const session = getSession();
+    if (!session?.tokens?.accessToken) {
+      setFavoriteIds(new Set());
+      return;
+    }
+
+    try {
+      const favorites = await apiRequestAuth<ApiFavorite[]>({
+        path: '/api/favorites'
+      });
+      setFavoriteIds(new Set(favorites.map((f) => f.property.id)));
+    } catch {
+      // ignore refresh errors to avoid disrupting the home feed
+    }
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      void refreshFavorites();
+    }, [])
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -189,7 +211,7 @@ const HomePage = () => {
       {/* Header Section */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.welcomeText}>Hello{fullName ? `, ${fullName}` : ''}</Text>
+          <Text style={styles.welcomeText}>Holla {fullName ? `, ${fullName}` : 'Vibe Settler 😎'}</Text>
           <Text style={styles.subHeader}>Find your dream home</Text>
         </View>
         <TouchableOpacity style={styles.notificationBtn}>
@@ -228,14 +250,6 @@ const HomePage = () => {
           ) : null
         }
       />
-
-      {/* Navigation (Logical structure) */}
-      <View style={styles.bottomNav}>
-         <Ionicons name="home" size={26} color="#001a2d" />
-         <Ionicons name="heart-outline" size={26} color="#888" />
-         <Ionicons name="chatbubble-outline" size={26} color="#888" />
-         <Ionicons name="person-outline" size={26} color="#888" />
-      </View>
     </SafeAreaView>
   );
 };
