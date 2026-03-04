@@ -81,11 +81,13 @@ export const login = async (req: Request, res: Response) => {
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
+      console.log("Login attempt with non-existent email:", email);
     }
 
     const match = await bcrypt.compare(password, user.passwordHash);
     if (!match) {
       return res.status(401).json({ message: "Invalid password" });
+      console.log("Invalid password attempt for user:", email);
     }
 
     const tokens = await issueTokens(user);
@@ -94,8 +96,11 @@ export const login = async (req: Request, res: Response) => {
       user: toPublicUser(user),
       ...tokens
     });
+
+    console.log("User logged in successfully:", email);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+    console.error("Error during login:", err);
   }
 };
 

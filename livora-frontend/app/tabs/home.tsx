@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { 
   StyleSheet, View, Text, TextInput, TouchableOpacity, 
-  FlatList, Image, SafeAreaView, StatusBar 
+  FlatList, Image, SafeAreaView, StatusBar, Alert
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { apiRequest } from '../../lib/api';
 import { getSession } from '../../lib/session';
+import { apiRequestAuth } from '../../lib/apiAuth';
 
 interface Property {
   id: number;
@@ -35,6 +36,14 @@ type ApiProperty = {
   images?: ApiPropertyImage[];
 };
 
+type ApiFavorite = {
+  id: number;
+  property: {
+    id: number;
+  };
+};
+
+
 const toPropertyType = (value: unknown): Property['type'] => {
   if (value === 'Rent') return 'Rent';
   if (value === 'Sale') return 'Sale';
@@ -58,16 +67,18 @@ const mapApiPropertyToUi = (p: ApiProperty): Property => {
 
 interface PropertyCardProps {
   item: Property;
+  isFavorite: boolean;
+  onToggleFavorite: (propertyId: number, isFavorite: boolean) => void;
 }
 
-const PropertyCard: React.FC<PropertyCardProps> = ({ item }) => (
+const PropertyCard: React.FC<PropertyCardProps> = ({ item, isFavorite, onToggleFavorite }) => (
   <TouchableOpacity style={styles.card}>
     <Image source={{ uri: item.imageUrl }} style={styles.cardImage} />
     <View style={styles.typeTag}>
       <Text style={styles.typeTagText}>{item.type}</Text>
     </View>
-    <TouchableOpacity style={styles.favoriteIcon}>
-      <Ionicons name="heart-outline" size={24} color="#001a2d" />
+    <TouchableOpacity style={styles.favoriteIcon} onPress={() => onToggleFavorite(item.id, isFavorite)}>
+      <Ionicons name={isFavorite ? "heart" : "heart-outline"} size={24} color={isFavorite ? "#e11d48" : "#001a2d"} />
     </TouchableOpacity>
     
     <View style={styles.cardDetails}>
@@ -97,6 +108,39 @@ const HomePage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fullName, setFullName] = useState<string>('');
+  const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
+
+  const setFavoriteId = (propertyId: number, nextIsFavorite: boolean) => {
+    setFavoriteIds((prev) => {
+      const next = new Set(prev);
+      if (nextIsFavorite) next.add(propertyId);
+      else next.delete(propertyId);
+      return next;
+    });
+  };
+
+  const toggleFavorite = async (propertyId: number, isFavorite: boolean) => {
+    const session = getSession();
+    if (!session?.tokens?.accessToken) {
+      Alert.alert('Login required', 'Please log in to manage favorites.');
+      return;
+    }
+
+    const nextIsFavorite = !isFavorite;
+    setFavoriteId(propertyId, nextIsFavorite);
+
+    try {
+      if (nextIsFavorite) {
+        await apiRequestAuth({ method: 'POST', path: '/api/favorites/' + propertyId });
+      } else {
+        await apiRequestAuth({ method: 'DELETE', path: '/api/favorites/' + propertyId });
+      }
+    } catch (e) {
+      setFavoriteId(propertyId, isFavorite);
+      Alert.alert('Favorites', e instanceof Error ? e.message : 'Failed to update favorites');
+    }
+  };
+
 
   useEffect(() => {
     let cancelled = false;
@@ -109,12 +153,21 @@ const HomePage = () => {
       setError(null);
 
       try {
-        const apiProperties = await apiRequest<ApiProperty[]>({
-          path: '/api/properties'
-        });
+        const [apiProperties, favorites] = await Promise.all([
+          apiRequest<ApiProperty[]>({
+            path: '/api/properties'
+          }),
+          (async () => {
+            if (!session?.tokens?.accessToken) return [] as ApiFavorite[];
+            return apiRequestAuth<ApiFavorite[]>({
+              path: '/api/favorites'
+            });
+          })()
+        ]);
 
         if (cancelled) return;
         setProperties(apiProperties.map(mapApiPropertyToUi));
+        setFavoriteIds(new Set(favorites.map((f) => f.property.id)));
       } catch (e) {
         if (cancelled) return;
         setError(e instanceof Error ? e.message : 'Failed to load properties');
@@ -163,7 +216,7 @@ const HomePage = () => {
       <FlatList
         data={properties}
         keyExtractor={(item) => String(item.id)}
-        renderItem={({ item }) => <PropertyCard item={item} />}
+        renderItem={({ item }) => <PropertyCard item={item} isFavorite={favoriteIds.has(item.id)} onToggleFavorite={toggleFavorite} />}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
