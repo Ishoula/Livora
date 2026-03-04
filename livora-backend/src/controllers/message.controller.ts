@@ -98,13 +98,21 @@ export const getMessagesForProperty = async (req: AuthRequest, res: Response) =>
     const { propertyId } = req.params as unknown as MessageParamsInput;
     const repo = AppDataSource.getRepository(Message);
 
-    const messages = await repo.find({
-        where: { property: { id: propertyId } },
-        relations: ['sender', 'receiver']
+    const userId = req.user?.id;
+    if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+    }
 
+    const messages = await repo.find({
+        where: [
+            { property: { id: propertyId }, sender: { id: userId } },
+            { property: { id: propertyId }, receiver: { id: userId } }
+        ],
+        relations: ['sender', 'receiver'],
+        order: { sentAt: 'ASC' }
     });
 
-    res.status(200).json(messages)
+    return res.status(200).json(messages);
 }
 
 export const deleteMessage = async (req: AuthRequest, res: Response) => {

@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 
 import { apiRequest } from '../../lib/api';
 import { getSession } from '../../lib/session';
@@ -70,9 +71,10 @@ interface PropertyCardProps {
   item: Property;
   isFavorite: boolean;
   onToggleFavorite: (propertyId: number, isFavorite: boolean) => void;
+  onMessage: (propertyId: number) => void;
 }
 
-const PropertyCard: React.FC<PropertyCardProps> = ({ item, isFavorite, onToggleFavorite }) => (
+const PropertyCard: React.FC<PropertyCardProps> = ({ item, isFavorite, onToggleFavorite, onMessage }) => (
   <TouchableOpacity style={styles.card}>
     <Image source={{ uri: item.imageUrl }} style={styles.cardImage} />
     <View style={styles.typeTag}>
@@ -80,6 +82,9 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ item, isFavorite, onToggleF
     </View>
     <TouchableOpacity style={styles.favoriteIcon} onPress={() => onToggleFavorite(item.id, isFavorite)}>
       <Ionicons name={isFavorite ? "heart" : "heart-outline"} size={24} color={isFavorite ? "#e11d48" : "#001a2d"} />
+    </TouchableOpacity>
+    <TouchableOpacity style={styles.messageIcon} onPress={() => onMessage(item.id)}>
+      <Ionicons name="chatbubble-ellipses-outline" size={22} color="#001a2d" />
     </TouchableOpacity>
     
     <View style={styles.cardDetails}>
@@ -105,11 +110,16 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ item, isFavorite, onToggleF
 );
 
 const HomePage = () => {
+  const router = useRouter();
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fullName, setFullName] = useState<string>('');
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
+
+  const goToMessages = (propertyId: number) => {
+    router.push({ pathname: '/tabs/messages', params: { propertyId: String(propertyId) } });
+  };
 
   const sortedProperties = useMemo(() => {
     const decorated = properties.map((p, index) => ({ p, index }));
@@ -252,7 +262,14 @@ const HomePage = () => {
       <FlatList
         data={sortedProperties}
         keyExtractor={(item) => String(item.id)}
-        renderItem={({ item }) => <PropertyCard item={item} isFavorite={favoriteIds.has(item.id)} onToggleFavorite={toggleFavorite} />}
+        renderItem={({ item }) => (
+          <PropertyCard
+            item={item}
+            isFavorite={favoriteIds.has(item.id)}
+            onToggleFavorite={toggleFavorite}
+            onMessage={goToMessages}
+          />
+        )}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
@@ -307,6 +324,14 @@ const styles = StyleSheet.create({
   favoriteIcon: { 
     position: 'absolute', top: 15, right: 15, backgroundColor: '#fff', 
     padding: 8, borderRadius: 100 
+  },
+  messageIcon: {
+    position: 'absolute',
+    top: 15,
+    right: 58,
+    backgroundColor: '#fff',
+    padding: 8,
+    borderRadius: 100
   },
   cardDetails: { padding: 15 },
   cardPrice: { fontSize: 20, fontWeight: 'bold', color: '#001a2d' },
