@@ -5,6 +5,7 @@ import favoriteRoutes from './routes/favorite.routes';
 import propertyRoutes from './routes/property.routes';
 import messageRoutes from './routes/message.routes';
 import notificationRoutes from './routes/notification.routes';
+import userRoutes from './routes/user.routes';
 import { notFound } from './middlewares/nonFound.middleware';
 import { errorHandler } from './middlewares/error.middleware';
 
@@ -18,6 +19,7 @@ app.use('/api/favorites', favoriteRoutes);
 app.use('/api/properties', propertyRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/users', userRoutes);
 app.use(notFound);
 app.use(errorHandler);
 

@@ -29,14 +29,27 @@ export default function RootLayout() {
         name="messages"
         options={{
           title: 'Messages',
-          tabBarIcon: ({ color, size }) => <Ionicons name="chatbubble-outline" size={size} color={color} />
+          tabBarIcon: ({ color, size }) => <Ionicons name="chatbubble" size={size} color={color} />
         }}
       />
       <Tabs.Screen
         name="notifications"
         options={{
           title: 'Alerts',
-          tabBarIcon: ({ color, size }) => <Ionicons name="notifications-outline" size={size} color={color} />
+          tabBarIcon: ({ color, size }) => <Ionicons name="notifications" size={size} color={color} />
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color, size }) => <Ionicons name="person" size={size} color={color} />
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          href: null
         }}
       />
     </Tabs>

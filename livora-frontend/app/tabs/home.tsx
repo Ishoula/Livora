@@ -8,6 +8,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 
 import { apiRequest } from '../../lib/api';
+import { logout } from '../../lib/auth';
 import { getSession } from '../../lib/session';
 import { apiRequestAuth } from '../../lib/apiAuth';
 
@@ -123,6 +124,30 @@ const HomePage = () => {
 
   const goToNotifications = () => {
     router.push('/tabs/notifications');
+  };
+
+  const goToProfile = () => {
+    router.push('/tabs/profile');
+  };
+
+  const goToSettings = () => {
+    router.push('/tabs/settings');
+  };
+
+  const handleLogout = async () => {
+    const session = getSession();
+    const refreshToken = session?.tokens?.refreshToken;
+    if (!refreshToken) {
+      Alert.alert('Logout', 'You are not logged in.');
+      return;
+    }
+
+    try {
+      await logout(refreshToken);
+      router.replace('/login');
+    } catch (e) {
+      Alert.alert('Logout failed', e instanceof Error ? e.message : 'Failed to logout');
+    }
   };
 
   const sortedProperties = useMemo(() => {
@@ -242,10 +267,21 @@ const HomePage = () => {
           <Text style={styles.welcomeText}>Holla {fullName ? `, ${fullName}` : 'Vibe Settler 😎'}</Text>
           <Text style={styles.subHeader}>Find your dream home</Text>
         </View>
-        <TouchableOpacity style={styles.notificationBtn} onPress={goToNotifications}>
-          <Ionicons name="notifications-outline" size={24} color="#001a2d" />
-          <View style={styles.notifBadge} />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity style={styles.iconBtn} onPress={goToNotifications}>
+            <Ionicons name="notifications-outline" size={22} color="#001a2d" />
+            <View style={styles.notifBadge} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconBtn} onPress={goToProfile}>
+            <Ionicons name="person-circle-outline" size={24} color="#001a2d" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconBtn} onPress={goToSettings}>
+            <Ionicons name="settings-outline" size={22} color="#001a2d" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconBtn} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={22} color="#001a2d" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Search & Filter (FR-9, FR-10) */}
@@ -297,7 +333,8 @@ const styles = StyleSheet.create({
   },
   welcomeText: { fontSize: 14, color: '#666' },
   subHeader: { fontSize: 22, fontWeight: 'bold', color: '#001a2d' },
-  notificationBtn: { backgroundColor: '#f0f0f0', padding: 10, borderRadius: 12 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  iconBtn: { backgroundColor: '#f0f0f0', padding: 10, borderRadius: 12 },
   notifBadge: { 
     position: 'absolute', right: 10, top: 10, width: 8, height: 8, 
     backgroundColor: 'red', borderRadius: 4 
