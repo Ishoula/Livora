@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from "react";
 import {
   StyleSheet,
   View,
@@ -8,12 +8,12 @@ import {
   SafeAreaView,
   StatusBar,
   TouchableOpacity,
-  Alert
-} from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { getSession } from '../../lib/session';
-import { apiRequestAuth } from '../../lib/apiAuth';
+  Alert,
+} from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { getSession } from "../../lib/session";
+import { apiRequestAuth } from "../../lib/apiAuth";
 
 type ApiUser = {
   id: number;
@@ -31,9 +31,9 @@ type ApiMessage = {
 const MessagesPage = () => {
   const router = useRouter();
   const params = useLocalSearchParams<{ propertyId?: string | string[] }>();
-  const [propertyIdText, setPropertyIdText] = useState('');
-  const [receiverIdText, setReceiverIdText] = useState('');
-  const [draft, setDraft] = useState('');
+  const [propertyIdText, setPropertyIdText] = useState("");
+  const [receiverIdText, setReceiverIdText] = useState("");
+  const [draft, setDraft] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
@@ -57,12 +57,15 @@ const MessagesPage = () => {
 
   const loadMessages = async () => {
     if (!isLoggedIn) {
-      Alert.alert('Login required', 'Please log in to view messages.');
+      Alert.alert("Login required", "Please log in to view messages.");
       return;
     }
 
     if (!propertyId) {
-      Alert.alert('Missing details', 'Enter a valid propertyId to view messages.');
+      Alert.alert(
+        "Missing details",
+        "Enter a valid propertyId to view messages.",
+      );
       return;
     }
 
@@ -71,13 +74,15 @@ const MessagesPage = () => {
 
     try {
       const apiMessages = await apiRequestAuth<ApiMessage[]>({
-        path: '/api/messages/property/' + propertyId
+        path: "/api/messages/property/" + propertyId,
       });
 
-      apiMessages.sort((a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime());
+      apiMessages.sort(
+        (a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime(),
+      );
       setMessages(apiMessages);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load messages');
+      setError(e instanceof Error ? e.message : "Failed to load messages");
     } finally {
       setLoading(false);
     }
@@ -86,7 +91,7 @@ const MessagesPage = () => {
   useEffect(() => {
     const raw = params?.propertyId;
     const value = Array.isArray(raw) ? raw[0] : raw;
-    if (typeof value === 'string' && value.trim()) {
+    if (typeof value === "string" && value.trim()) {
       setPropertyIdText(value);
     }
   }, [params?.propertyId]);
@@ -100,18 +105,21 @@ const MessagesPage = () => {
 
   const sendMessage = async () => {
     if (!isLoggedIn) {
-      Alert.alert('Login required', 'Please log in to send messages.');
+      Alert.alert("Login required", "Please log in to send messages.");
       return;
     }
 
     if (!propertyId) {
-      Alert.alert('Missing details', 'Enter a valid propertyId before sending.');
+      Alert.alert(
+        "Missing details",
+        "Enter a valid propertyId before sending.",
+      );
       return;
     }
 
     const message = draft.trim();
     if (!message) {
-      Alert.alert('Empty message', 'Type a message first.');
+      Alert.alert("Empty message", "Type a message first.");
       return;
     }
 
@@ -122,15 +130,18 @@ const MessagesPage = () => {
       if (receiverId !== undefined) body.receiverId = receiverId;
 
       await apiRequestAuth({
-        method: 'POST',
-        path: '/api/messages/property/' + propertyId,
-        body
+        method: "POST",
+        path: "/api/messages/property/" + propertyId,
+        body,
       });
 
-      setDraft('');
+      setDraft("");
       await loadMessages();
     } catch (e) {
-      Alert.alert('Message', e instanceof Error ? e.message : 'Failed to send message');
+      Alert.alert(
+        "Message",
+        e instanceof Error ? e.message : "Failed to send message",
+      );
     } finally {
       setSending(false);
     }
@@ -145,8 +156,8 @@ const MessagesPage = () => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
 
-      <View style={styles.header}>
-        <View>
+      <View style={styles.messageHeader}>
+        <View style={styles.headerContent}>
           <Text style={styles.subHeader}>Messages</Text>
           <Text style={styles.welcomeText}>Chat about properties</Text>
         </View>
@@ -155,7 +166,10 @@ const MessagesPage = () => {
       {!isLoggedIn ? (
         <View style={styles.loggedOutBox}>
           <Text style={styles.muted}>Log in to view and send messages.</Text>
-          <TouchableOpacity style={styles.loginCta} onPress={() => router.push('/(auth)/login')}>
+          <TouchableOpacity
+            style={styles.loginCta}
+            onPress={() => router.push("/(auth)/login")}
+          >
             <Text style={styles.loginCtaText}>Go to Login</Text>
           </TouchableOpacity>
         </View>
@@ -172,14 +186,21 @@ const MessagesPage = () => {
                 style={styles.input}
               />
             </View>
-            <TouchableOpacity style={styles.loadBtn} onPress={loadMessages} disabled={loading}>
+            <TouchableOpacity
+              style={styles.loadBtn}
+              onPress={loadMessages}
+              disabled={loading}
+            >
               <Ionicons name="refresh" size={18} color="#fff" />
-              <Text style={styles.loadBtnText}>{loading ? 'Loading' : 'Load'}</Text>
+              <Text style={styles.loadBtnText}>
+                {loading ? "Loading" : "Load"}
+              </Text>
             </TouchableOpacity>
           </View>
 
           <Text style={styles.helper}>
-            Receiver ID is optional (buyers can leave it empty; owners replying may need it).
+            Receiver ID is optional (buyers can leave it empty; owners replying
+            may need it).
           </Text>
           <TextInput
             value={receiverIdText}
@@ -193,7 +214,7 @@ const MessagesPage = () => {
 
       {error ? (
         <View style={{ paddingHorizontal: 20, paddingTop: 10 }}>
-          <Text style={{ color: 'red' }}>{error}</Text>
+          <Text style={{ color: "red" }}>{error}</Text>
         </View>
       ) : null}
 
@@ -203,12 +224,33 @@ const MessagesPage = () => {
         contentContainerStyle={styles.listContent}
         renderItem={({ item }) => {
           const isMine = item.sender?.id === session?.user?.id;
-          const senderName = item.sender?.fullName ?? (isMine ? 'You' : 'User ' + item.sender?.id);
+          const senderName =
+            item.sender?.fullName ??
+            (isMine ? "You" : "User " + item.sender?.id);
           return (
-            <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleOther]}>
-              <Text style={isMine ? styles.bubbleTitleMine : styles.bubbleTitleOther}>{senderName}</Text>
-              <Text style={isMine ? styles.bubbleTextMine : styles.bubbleTextOther}>{item.message}</Text>
-              <Text style={isMine ? styles.bubbleMetaMine : styles.bubbleMetaOther}>{new Date(item.sentAt).toLocaleString()}</Text>
+            <View
+              style={[
+                styles.bubble,
+                isMine ? styles.bubbleMine : styles.bubbleOther,
+              ]}
+            >
+              <Text
+                style={
+                  isMine ? styles.bubbleTitleMine : styles.bubbleTitleOther
+                }
+              >
+                {senderName}
+              </Text>
+              <Text
+                style={isMine ? styles.bubbleTextMine : styles.bubbleTextOther}
+              >
+                {item.message}
+              </Text>
+              <Text
+                style={isMine ? styles.bubbleMetaMine : styles.bubbleMetaOther}
+              >
+                {new Date(item.sentAt).toLocaleString()}
+              </Text>
             </View>
           );
         }}
@@ -230,7 +272,11 @@ const MessagesPage = () => {
             style={styles.composerInput}
             multiline
           />
-          <TouchableOpacity style={styles.sendBtn} onPress={sendMessage} disabled={sending}>
+          <TouchableOpacity
+            style={styles.sendBtn}
+            onPress={sendMessage}
+            disabled={sending}
+          >
             <Ionicons name="send" size={18} color="#fff" />
           </TouchableOpacity>
         </View>
@@ -240,91 +286,101 @@ const MessagesPage = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20
+  container: { flex: 1, backgroundColor: "#fff" },
+  messageHeader: {
+    padding: 20,
+    backgroundColor: "#a0c2f5",
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    marginBottom: 15,
   },
-  welcomeText: { fontSize: 14, color: '#666' },
-  subHeader: { fontSize: 22, fontWeight: 'bold', color: '#001a2d' },
+  headerContent: {
+    gap: 4,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 20,
+  },
+  welcomeText: { fontSize: 14, color: "#666" },
+  subHeader: { fontSize: 22, fontWeight: "bold", color: "#001a2d" },
   loggedOutBox: { paddingHorizontal: 20, paddingTop: 10, gap: 10 },
-  muted: { color: '#666' },
+  muted: { color: "#666" },
   controls: { paddingHorizontal: 20, paddingBottom: 10 },
-  row: { flexDirection: 'row', gap: 12, alignItems: 'flex-end' },
-  label: { color: '#333', fontWeight: 'bold', marginBottom: 6 },
+  row: { flexDirection: "row", gap: 12, alignItems: "flex-end" },
+  label: { color: "#333", fontWeight: "bold", marginBottom: 6 },
   input: {
     borderWidth: 1,
-    borderColor: '#eee',
-    backgroundColor: '#f7f7f7',
+    borderColor: "#eee",
+    backgroundColor: "#f7f7f7",
     borderRadius: 12,
     paddingHorizontal: 12,
-    paddingVertical: 12
+    paddingVertical: 12,
   },
-  helper: { color: '#666', fontSize: 12, marginVertical: 10 },
+  helper: { color: "#666", fontSize: 12, marginVertical: 10 },
   loadBtn: {
-    backgroundColor: '#001a2d',
+    backgroundColor: "#001a2d",
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
-  loadBtnText: { color: '#fff', fontWeight: 'bold' },
+  loadBtnText: { color: "#fff", fontWeight: "bold" },
   listContent: { paddingHorizontal: 20, paddingBottom: 100 },
   bubble: {
     borderRadius: 14,
     padding: 12,
     marginBottom: 10,
-    maxWidth: '90%'
+    maxWidth: "90%",
   },
-  bubbleMine: { backgroundColor: '#001a2d', alignSelf: 'flex-end', },
-  bubbleOther: { backgroundColor: '#fff', alignSelf: 'flex-start' },
-  bubbleTitleOther: { fontWeight: 'bold', color: '#001a2d', marginBottom: 4 },
-  bubbleTitleMine: { fontWeight: 'bold', color: '#fff', marginBottom: 4 },
-  bubbleTextMine: { color: '#fff' },
-  bubbleTextOther: { color: '#001a2d' },
-  bubbleMetaMine: { color: '#eeeeee', fontSize: 11, marginTop: 8 },
-  bubbleMetaOther: { color: '#001a2d', fontSize: 11, marginTop: 8 },
+  bubbleMine: { backgroundColor: "#001a2d", alignSelf: "flex-end" },
+  bubbleOther: { backgroundColor: "#f0f0f0", alignSelf: "flex-start" },
+  bubbleTitleOther: { fontWeight: "bold", color: "#001a2d", marginBottom: 4 },
+  bubbleTitleMine: { fontWeight: "bold", color: "#fff", marginBottom: 4 },
+  bubbleTextMine: { color: "#fff" },
+  bubbleTextOther: { color: "#001a2d" },
+  bubbleMetaMine: { color: "#eeeeee", fontSize: 11, marginTop: 8 },
+  bubbleMetaOther: { color: "#666", fontSize: 11, marginTop: 8 },
   composer: {
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 10,
     padding: 12,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderTopWidth: 1,
-    borderTopColor: '#eee'
+    borderTopColor: "#eee",
   },
   composerInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#eee',
-    backgroundColor: '#f7f7f7',
+    borderColor: "#eee",
+    backgroundColor: "#f7f7f7",
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    maxHeight: 100
+    maxHeight: 100,
   },
   sendBtn: {
-    backgroundColor: '#001a2d',
+    backgroundColor: "#001a2d",
     width: 44,
     height: 44,
     borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center'
+    alignItems: "center",
+    justifyContent: "center",
   },
   loginCta: {
-    backgroundColor: '#001a2d',
+    backgroundColor: "#001a2d",
     paddingVertical: 14,
     borderRadius: 12,
-    alignItems: 'center'
+    alignItems: "center",
   },
-  loginCtaText: { color: '#fff', fontSize: 16, fontWeight: 'bold' }
+  loginCtaText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
 });
 
 export default MessagesPage;

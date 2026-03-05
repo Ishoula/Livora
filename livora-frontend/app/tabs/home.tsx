@@ -1,16 +1,27 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { 
-  StyleSheet, View, Text, TextInput, TouchableOpacity, 
-  FlatList, Image, SafeAreaView, StatusBar, Alert
-} from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
-import { useRouter } from 'expo-router';
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  StyleSheet,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  FlatList,
+  Image,
+  SafeAreaView,
+  StatusBar,
+  Alert,
+} from "react-native";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
+import { useRouter } from "expo-router";
 
-import { apiRequest } from '../../lib/api';
-import { logout } from '../../lib/auth';
-import { getSession } from '../../lib/session';
-import { apiRequestAuth } from '../../lib/apiAuth';
+import { apiRequest } from "../../lib/api";
+import { logout } from "../../lib/auth";
+import { getSession } from "../../lib/session";
+import { apiRequestAuth } from "../../lib/apiAuth";
+
+// Constants for layout
+const STATUS_BAR_HEIGHT = StatusBar.currentHeight ?? 0;
 
 interface Property {
   id: number;
@@ -20,7 +31,7 @@ interface Property {
   bedrooms: number;
   bathrooms: number;
   imageUrl: string;
-  type: 'Rent' | 'Sale';
+  type: "Rent" | "Sale";
 }
 
 type ApiPropertyImage = {
@@ -47,10 +58,10 @@ type ApiFavorite = {
   };
 };
 
-const toPropertyType = (value: unknown): Property['type'] => {
-  if (value === 'Rent') return 'Rent';
-  if (value === 'Sale') return 'Sale';
-  return 'Sale';
+const toPropertyType = (value: unknown): Property["type"] => {
+  if (value === "Rent") return "Rent";
+  if (value === "Sale") return "Sale";
+  return "Sale";
 };
 
 const mapApiPropertyToUi = (p: ApiProperty): Property => {
@@ -59,12 +70,12 @@ const mapApiPropertyToUi = (p: ApiProperty): Property => {
   return {
     id: p.id,
     title: p.title,
-    location: p.location ?? '',
-    price: typeof p.price === 'string' ? Number(p.price) : p.price,
+    location: p.location ?? "",
+    price: typeof p.price === "string" ? Number(p.price) : p.price,
     bedrooms: p.bedrooms ?? 0,
     bathrooms: p.bathrooms ?? 0,
-    imageUrl: firstImageUrl ?? p.image_url ?? '',
-    type: toPropertyType(p.propertyType)
+    imageUrl: firstImageUrl ?? p.image_url ?? "",
+    type: toPropertyType(p.propertyType),
   };
 };
 
@@ -75,27 +86,44 @@ interface PropertyCardProps {
   onMessage: (propertyId: number) => void;
 }
 
-const PropertyCard: React.FC<PropertyCardProps> = ({ item, isFavorite, onToggleFavorite, onMessage }) => (
+const PropertyCard: React.FC<PropertyCardProps> = ({
+  item,
+  isFavorite,
+  onToggleFavorite,
+  onMessage,
+}) => (
   <TouchableOpacity style={styles.card}>
     <Image source={{ uri: item.imageUrl }} style={styles.cardImage} />
     <View style={styles.typeTag}>
       <Text style={styles.typeTagText}>{item.type}</Text>
     </View>
-    <TouchableOpacity style={styles.favoriteIcon} onPress={() => onToggleFavorite(item.id, isFavorite)}>
-      <Ionicons name={isFavorite ? "heart" : "heart-outline"} size={24} color={isFavorite ? "#e11d48" : "#001a2d"} />
+    <TouchableOpacity
+      style={styles.favoriteIcon}
+      onPress={() => onToggleFavorite(item.id, isFavorite)}
+    >
+      <Ionicons
+        name={isFavorite ? "heart" : "heart-outline"}
+        size={24}
+        color={isFavorite ? "#e11d48" : "#001a2d"}
+      />
     </TouchableOpacity>
-    <TouchableOpacity style={styles.messageIcon} onPress={() => onMessage(item.id)}>
+    <TouchableOpacity
+      style={styles.messageIcon}
+      onPress={() => onMessage(item.id)}
+    >
       <Ionicons name="chatbubble-ellipses-outline" size={22} color="#001a2d" />
     </TouchableOpacity>
-    
+
     <View style={styles.cardDetails}>
       <Text style={styles.cardPrice}>${item.price.toLocaleString()}</Text>
-      <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
+      <Text style={styles.cardTitle} numberOfLines={1}>
+        {item.title}
+      </Text>
       <View style={styles.locationRow}>
         <Ionicons name="location-sharp" size={14} color="#666" />
         <Text style={styles.locationText}>{item.location}</Text>
       </View>
-      
+
       <View style={styles.amenitiesRow}>
         <View style={styles.amenity}>
           <Ionicons name="bed-outline" size={16} color="#001a2d" />
@@ -115,51 +143,47 @@ const HomePage = () => {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [fullName, setFullName] = useState<string>('');
+  const [fullName, setFullName] = useState<string>("");
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
 
   const goToMessages = (propertyId: number) => {
-    router.push({ pathname: '/tabs/messages', params: { propertyId: String(propertyId) } });
+    router.push({
+      pathname: "/tabs/messages",
+      params: { propertyId: String(propertyId) },
+    });
   };
 
-  const goToNotifications = () => {
-    router.push('/tabs/notifications');
-  };
-
-  const goToProfile = () => {
-    router.push('/tabs/profile');
-  };
-
-  const goToSettings = () => {
-    router.push('/tabs/settings');
-  };
+  const goToNotifications = () => router.push("/tabs/notifications");
+  const goToProfile = () => router.push("/tabs/profile");
+  const goToSettings = () => router.push("/tabs/settings");
 
   const handleLogout = async () => {
     const session = getSession();
     const refreshToken = session?.tokens?.refreshToken;
     if (!refreshToken) {
-      Alert.alert('Logout', 'You are not logged in.');
+      Alert.alert("Logout", "You are not logged in.");
       return;
     }
 
     try {
       await logout(refreshToken);
-      router.replace('/login');
+      router.replace("/login");
     } catch (e) {
-      Alert.alert('Logout failed', e instanceof Error ? e.message : 'Failed to logout');
+      Alert.alert(
+        "Logout failed",
+        e instanceof Error ? e.message : "Failed to logout"
+      );
     }
   };
 
   const sortedProperties = useMemo(() => {
     const decorated = properties.map((p, index) => ({ p, index }));
-
     decorated.sort((a, b) => {
       const aFav = favoriteIds.has(a.p.id) ? 1 : 0;
       const bFav = favoriteIds.has(b.p.id) ? 1 : 0;
       if (aFav !== bFav) return bFav - aFav;
       return a.index - b.index;
     });
-
     return decorated.map((x) => x.p);
   }, [properties, favoriteIds]);
 
@@ -175,7 +199,7 @@ const HomePage = () => {
   const toggleFavorite = async (propertyId: number, isFavorite: boolean) => {
     const session = getSession();
     if (!session?.tokens?.accessToken) {
-      Alert.alert('Login required', 'Please log in to manage favorites.');
+      Alert.alert("Login required", "Please log in to manage favorites.");
       return;
     }
 
@@ -184,13 +208,22 @@ const HomePage = () => {
 
     try {
       if (nextIsFavorite) {
-        await apiRequestAuth({ method: 'POST', path: '/api/favorites/' + propertyId });
+        await apiRequestAuth({
+          method: "POST",
+          path: "/api/favorites/" + propertyId,
+        });
       } else {
-        await apiRequestAuth({ method: 'DELETE', path: '/api/favorites/' + propertyId });
+        await apiRequestAuth({
+          method: "DELETE",
+          path: "/api/favorites/" + propertyId,
+        });
       }
     } catch (e) {
       setFavoriteId(propertyId, isFavorite);
-      Alert.alert('Favorites', e instanceof Error ? e.message : 'Failed to update favorites');
+      Alert.alert(
+        "Favorites",
+        e instanceof Error ? e.message : "Failed to update favorites"
+      );
     }
   };
 
@@ -203,11 +236,11 @@ const HomePage = () => {
 
     try {
       const favorites = await apiRequestAuth<ApiFavorite[]>({
-        path: '/api/favorites'
+        path: "/api/favorites",
       });
       setFavoriteIds(new Set(favorites.map((f) => f.property.id)));
     } catch {
-      // ignore refresh errors to avoid disrupting the home feed
+      // ignore refresh errors
     }
   };
 
@@ -219,9 +252,8 @@ const HomePage = () => {
 
   useEffect(() => {
     let cancelled = false;
-
     const session = getSession();
-    setFullName(session?.user.fullName ?? '');
+    setFullName(session?.user.fullName ?? "");
 
     (async () => {
       setLoading(true);
@@ -229,15 +261,11 @@ const HomePage = () => {
 
       try {
         const [apiProperties, favorites] = await Promise.all([
-          apiRequest<ApiProperty[]>({
-            path: '/api/properties'
-          }),
+          apiRequest<ApiProperty[]>({ path: "/api/properties" }),
           (async () => {
             if (!session?.tokens?.accessToken) return [] as ApiFavorite[];
-            return apiRequestAuth<ApiFavorite[]>({
-              path: '/api/favorites'
-            });
-          })()
+            return apiRequestAuth<ApiFavorite[]>({ path: "/api/favorites" });
+          })(),
         ]);
 
         if (cancelled) return;
@@ -245,7 +273,7 @@ const HomePage = () => {
         setFavoriteIds(new Set(favorites.map((f) => f.property.id)));
       } catch (e) {
         if (cancelled) return;
-        setError(e instanceof Error ? e.message : 'Failed to load properties');
+        setError(e instanceof Error ? e.message : "Failed to load properties");
       } finally {
         if (cancelled) return;
         setLoading(false);
@@ -260,13 +288,9 @@ const HomePage = () => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
-      
-      {/* Header Section */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.welcomeText}>Holla {fullName ? `, ${fullName}` : 'Vibe Settler 😎'}</Text>
-          <Text style={styles.subHeader}>Find your dream home</Text>
-        </View>
+
+      {/* Top Navbar Section: Aligned to Right */}
+      <View style={styles.topNavbar}>
         <View style={styles.headerActions}>
           <TouchableOpacity style={styles.iconBtn} onPress={goToNotifications}>
             <Ionicons name="notifications-outline" size={22} color="#001a2d" />
@@ -284,12 +308,20 @@ const HomePage = () => {
         </View>
       </View>
 
-      {/* Search & Filter (FR-9, FR-10) */}
+      {/* Welcome Message Section: Sits below Navbar */}
+      <View style={styles.welcomeBox}>
+        <Text style={styles.welcomeMessageText}>
+          Holla{fullName ? `, ${fullName}` : " Vibe Settler 😎"}
+        </Text>
+        <Text style={styles.welcomeSubText}>Find your dream home</Text>
+      </View>
+
+      {/* Search & Filter */}
       <View style={styles.searchSection}>
         <View style={styles.searchBar}>
           <Ionicons name="search" size={20} color="#999" />
-          <TextInput 
-            placeholder="Search by keywords..." 
+          <TextInput
+            placeholder="Search by keywords..."
             style={styles.searchInput}
           />
         </View>
@@ -298,7 +330,7 @@ const HomePage = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Property List (FR-8) */}
+      {/* Property List */}
       <FlatList
         data={sortedProperties}
         keyExtractor={(item) => String(item.id)}
@@ -314,9 +346,9 @@ const HomePage = () => {
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           loading || error ? (
-            <View style={{ paddingHorizontal: 20, paddingBottom: 10 }}>
-              {loading ? <Text style={{ color: '#666' }}>Loading...</Text> : null}
-              {error ? <Text style={{ color: 'red' }}>{error}</Text> : null}
+            <View style={{ paddingBottom: 10 }}>
+              {loading ? <Text style={{ color: "#666" }}>Loading...</Text> : null}
+              {error ? <Text style={{ color: "red" }}>{error}</Text> : null}
             </View>
           ) : null
         }
@@ -326,66 +358,165 @@ const HomePage = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  header: { 
-    flexDirection: 'row', justifyContent: 'space-between', 
-    alignItems: 'center', padding: 20 
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
+    paddingTop: 8,
   },
-  welcomeText: { fontSize: 14, color: '#666' },
-  subHeader: { fontSize: 22, fontWeight: 'bold', color: '#001a2d' },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  iconBtn: { backgroundColor: '#f0f0f0', padding: 10, borderRadius: 12 },
-  notifBadge: { 
-    position: 'absolute', right: 10, top: 10, width: 8, height: 8, 
-    backgroundColor: 'red', borderRadius: 4 
+  topNavbar: {
+    flexDirection: "row",
+    justifyContent: "flex-end", // Align icons to the right
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
-  searchSection: { 
-    flexDirection: 'row', paddingHorizontal: 20, marginBottom: 20, gap: 12 
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
-  searchBar: { 
-    flex: 1, flexDirection: 'row', alignItems: 'center', 
-    backgroundColor: '#f5f5f5', borderRadius: 12, paddingHorizontal: 15 
+  iconBtn: {
+    backgroundColor: "#f0f0f0",
+    padding: 10,
+    borderRadius: 12,
   },
-  searchInput: { flex: 1, height: 50, marginLeft: 10 },
-  filterBtn: { 
-    backgroundColor: '#001a2d', padding: 12, borderRadius: 12, justifyContent: 'center' 
+  notifBadge: {
+    position: "absolute",
+    right: 10,
+    top: 10,
+    width: 8,
+    height: 8,
+    backgroundColor: "red",
+    borderRadius: 4,
   },
-  listContent: { paddingHorizontal: 20, paddingBottom: 100 },
-  card: { 
-    backgroundColor: '#fff', borderRadius: 20, marginBottom: 20, 
-    elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, 
-    shadowRadius: 10, shadowOffset: { width: 0, height: 5 } 
+  welcomeBox: {
+    backgroundColor: "#a0c2f5",
+    padding: 20,
+    borderRadius: 20,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    gap: 4,
   },
-  cardImage: { width: '100%', height: 220, borderTopLeftRadius: 20, borderTopRightRadius: 20 },
-  typeTag: { 
-    position: 'absolute', top: 15, left: 15, backgroundColor: '#001a2d', 
-    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 
+  welcomeMessageText: {
+    fontSize: 16,
+    color: "#001a2d",
+    fontWeight: "500",
   },
-  typeTagText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
-  favoriteIcon: { 
-    position: 'absolute', top: 15, right: 15, backgroundColor: '#fff', 
-    padding: 8, borderRadius: 100 
+  welcomeSubText: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#001a2d",
+  },
+  searchSection: {
+    flexDirection: "row",
+    paddingHorizontal: 20,
+    marginBottom: 20,
+    gap: 12,
+  },
+  searchBar: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f5f5f5",
+    borderRadius: 12,
+    paddingHorizontal: 15,
+  },
+  searchInput: {
+    flex: 1,
+    height: 50,
+    marginLeft: 10,
+  },
+  filterBtn: {
+    backgroundColor: "#001a2d",
+    padding: 12,
+    borderRadius: 12,
+    justifyContent: "center",
+  },
+  listContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+  },
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    marginBottom: 20,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+  },
+  cardImage: {
+    width: "100%",
+    height: 220,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  typeTag: {
+    position: "absolute",
+    top: 15,
+    left: 15,
+    backgroundColor: "#001a2d",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  typeTagText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  favoriteIcon: {
+    position: "absolute",
+    top: 15,
+    right: 15,
+    backgroundColor: "#fff",
+    padding: 8,
+    borderRadius: 100,
   },
   messageIcon: {
-    position: 'absolute',
+    position: "absolute",
     top: 15,
     right: 58,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     padding: 8,
-    borderRadius: 100
+    borderRadius: 100,
   },
-  cardDetails: { padding: 15 },
-  cardPrice: { fontSize: 20, fontWeight: 'bold', color: '#001a2d' },
-  cardTitle: { fontSize: 16, color: '#333', marginVertical: 4 },
-  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  locationText: { color: '#666', fontSize: 13 },
-  amenitiesRow: { flexDirection: 'row', gap: 20, marginTop: 12 },
-  amenity: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  amenityText: { color: '#444', fontSize: 13 },
-  bottomNav: { 
-    position: 'absolute', bottom: 0, width: '100%', height: 70, 
-    backgroundColor: '#fff', flexDirection: 'row', justifyContent: 'space-around', 
-    alignItems: 'center', borderTopWidth: 1, borderTopColor: '#eee' 
+  cardDetails: {
+    padding: 15,
+  },
+  cardPrice: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#001a2d",
+  },
+  cardTitle: {
+    fontSize: 16,
+    color: "#333",
+    marginVertical: 4,
+  },
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  locationText: {
+    color: "#666",
+    fontSize: 13,
+  },
+  amenitiesRow: {
+    flexDirection: "row",
+    gap: 20,
+    marginTop: 12,
+  },
+  amenity: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  amenityText: {
+    color: "#444",
+    fontSize: 13,
   }
 });
 
