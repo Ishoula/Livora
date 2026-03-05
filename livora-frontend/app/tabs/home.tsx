@@ -121,6 +121,10 @@ const HomePage = () => {
     router.push({ pathname: '/tabs/messages', params: { propertyId: String(propertyId) } });
   };
 
+  const goToNotifications = () => {
+    router.push('/tabs/notifications');
+  };
+
   const sortedProperties = useMemo(() => {
     const decorated = properties.map((p, index) => ({ p, index }));
 
@@ -238,7 +242,7 @@ const HomePage = () => {
           <Text style={styles.welcomeText}>Holla {fullName ? `, ${fullName}` : 'Vibe Settler 😎'}</Text>
           <Text style={styles.subHeader}>Find your dream home</Text>
         </View>
-        <TouchableOpacity style={styles.notificationBtn}>
+        <TouchableOpacity style={styles.notificationBtn} onPress={goToNotifications}>
           <Ionicons name="notifications-outline" size={24} color="#001a2d" />
           <View style={styles.notifBadge} />
         </TouchableOpacity>

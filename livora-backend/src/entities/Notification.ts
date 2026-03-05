@@ -15,6 +15,12 @@ export class Notification {
   @Column("text")
   message: string;
 
+  @Column({ type: "int", nullable: true })
+  propertyId: number | null;
+
+  @Column({ type: "int", nullable: true })
+  messageId: number | null;
+
   @Column({ type: "boolean", default: false })
   isRead: boolean;
 

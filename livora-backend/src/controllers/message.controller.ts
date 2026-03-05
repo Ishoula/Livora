@@ -75,7 +75,9 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
         if (targetReceiverId !== sender.id) {
             const notification = notificationRepo.create({
                 user: { id: targetReceiverId } as User,
-                message: `You have received a new message about ${property.title}`
+                message: `You have received a new message about ${property.title}`,
+                propertyId: property.id,
+                messageId: savedMessage.id
             });
             await notificationRepo.save(notification);
         }

@@ -206,9 +206,9 @@ const MessagesPage = () => {
           const senderName = item.sender?.fullName ?? (isMine ? 'You' : 'User ' + item.sender?.id);
           return (
             <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleOther]}>
-              <Text style={styles.bubbleTitle}>{senderName}</Text>
-              <Text style={styles.bubbleText}>{item.message}</Text>
-              <Text style={styles.bubbleMeta}>{new Date(item.sentAt).toLocaleString()}</Text>
+              <Text style={isMine ? styles.bubbleTitleMine : styles.bubbleTitleOther}>{senderName}</Text>
+              <Text style={isMine ? styles.bubbleTextMine : styles.bubbleTextOther}>{item.message}</Text>
+              <Text style={isMine ? styles.bubbleMetaMine : styles.bubbleMetaOther}>{new Date(item.sentAt).toLocaleString()}</Text>
             </View>
           );
         }}
@@ -281,10 +281,13 @@ const styles = StyleSheet.create({
     maxWidth: '90%'
   },
   bubbleMine: { backgroundColor: '#001a2d', alignSelf: 'flex-end', },
-  bubbleOther: { backgroundColor: '#f2f2f2', alignSelf: 'flex-start' },
-  bubbleTitle: { fontWeight: 'bold', color: '#ffffff', marginBottom: 4 },
-  bubbleText: { color: '#fff' },
-  bubbleMeta: { color: '#eeeeee', fontSize: 11, marginTop: 8 },
+  bubbleOther: { backgroundColor: '#fff', alignSelf: 'flex-start' },
+  bubbleTitleOther: { fontWeight: 'bold', color: '#001a2d', marginBottom: 4 },
+  bubbleTitleMine: { fontWeight: 'bold', color: '#fff', marginBottom: 4 },
+  bubbleTextMine: { color: '#fff' },
+  bubbleTextOther: { color: '#001a2d' },
+  bubbleMetaMine: { color: '#eeeeee', fontSize: 11, marginTop: 8 },
+  bubbleMetaOther: { color: '#001a2d', fontSize: 11, marginTop: 8 },
   composer: {
     position: 'absolute',
     left: 0,

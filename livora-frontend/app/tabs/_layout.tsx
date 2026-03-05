@@ -32,6 +32,13 @@ export default function RootLayout() {
           tabBarIcon: ({ color, size }) => <Ionicons name="chatbubble-outline" size={size} color={color} />
         }}
       />
+      <Tabs.Screen
+        name="notifications"
+        options={{
+          title: 'Alerts',
+          tabBarIcon: ({ color, size }) => <Ionicons name="notifications-outline" size={size} color={color} />
+        }}
+      />
     </Tabs>
   );
 }
