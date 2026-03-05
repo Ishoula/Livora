@@ -390,7 +390,8 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   welcomeBox: {
-    backgroundColor: "#a0c2f5",
+    backgroundColor: "#e0ebfc",
+    boxShadow: "0 4px 6px #001a2d",
     padding: 20,
     borderRadius: 20,
     marginHorizontal: 20,
