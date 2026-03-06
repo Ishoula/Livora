@@ -13,7 +13,7 @@ const SettingsPage = () => {
   const insets = useSafeAreaInsets();
   const headerTotalHeight = insets.top + TOP_NAVBAR_BASE_HEIGHT;
   const { colors, mode, setMode } = useTheme();
-  const [busy, setBusy] = useState<null | 'reset_favorites' | 'delete_account'>(null);
+  const [busy, setBusy] = useState<null | 'reset_favorites' | 'reset_messages' | 'delete_account'>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [statusTone, setStatusTone] = useState<'ok' | 'error'>('ok');
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -76,6 +76,36 @@ const SettingsPage = () => {
         } catch (e) {
           setStatusTone('error');
           setStatusMessage(e instanceof Error ? e.message : 'Failed to reset favorites');
+        } finally {
+          setBusy(null);
+        }
+      }
+    });
+  }, [isLoggedIn, openConfirm]);
+
+  const handleResetMessages = useCallback(() => {
+    setStatusMessage(null);
+
+    if (!isLoggedIn) {
+      setStatusTone('error');
+      setStatusMessage('Please log in first.');
+      return;
+    }
+
+    openConfirm({
+      title: 'Reset messages',
+      message: 'This will delete all your messages. Continue?',
+      cta: 'Reset',
+      tone: 'danger',
+      action: async () => {
+        setBusy('reset_messages');
+        try {
+          await apiRequestAuth({ method: 'DELETE', path: '/api/messages' });
+          setStatusTone('ok');
+          setStatusMessage('All messages removed.');
+        } catch (e) {
+          setStatusTone('error');
+          setStatusMessage(e instanceof Error ? e.message : 'Failed to reset messages');
         } finally {
           setBusy(null);
         }
@@ -172,6 +202,15 @@ const SettingsPage = () => {
         >
           <Text style={[styles.dangerBtnText, { color: colors.text }]}>Reset favorites</Text>
           <Text style={[styles.dangerSub, { color: colors.textMuted }]}>Deletes all saved favorites</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.dangerBtn, { backgroundColor: colors.surfaceMuted }]}
+          onPress={handleResetMessages}
+          disabled={busy !== null}
+        >
+          <Text style={[styles.dangerBtnText, { color: colors.text }]}>Reset messages</Text>
+          <Text style={[styles.dangerSub, { color: colors.textMuted }]}>Deletes all messages</Text>
         </TouchableOpacity>
 
         <TouchableOpacity

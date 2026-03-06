@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   StyleSheet, View, Text, TextInput, TouchableOpacity, 
-  ImageBackground, SafeAreaView, StatusBar, Alert 
+  ImageBackground, SafeAreaView, StatusBar 
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons'; // Assuming Expo for icons
@@ -14,6 +14,8 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [statusTone, setStatusTone] = useState<'ok' | 'error'>('ok');
 
   const getLoginErrorMessage = (err: unknown): string => {
     if (err instanceof ApiError) {
@@ -27,8 +29,11 @@ const LoginPage = () => {
   };
 
   const handleLogin = async () => {
+    setStatusMessage(null);
+
     if (!email.trim() || !password) {
-      Alert.alert('Missing details', 'Please enter your email and password.');
+      setStatusTone('error');
+      setStatusMessage('Please enter your email and password.');
       return;
     }
 
@@ -37,7 +42,8 @@ const LoginPage = () => {
       await login({ email: email.trim(), password });
       router.replace('/tabs/home');
     } catch (err: unknown) {
-      Alert.alert('Login failed', getLoginErrorMessage(err));
+      setStatusTone('error');
+      setStatusMessage(getLoginErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -114,6 +120,23 @@ const LoginPage = () => {
               <Text style={styles.loginButtonText}>LOGIN  →</Text>
             </TouchableOpacity>
 
+            {statusMessage ? (
+              <View
+                style={[
+                  styles.statusBox,
+                  {
+                    borderColor: statusTone === 'ok' ? '#001a2d' : '#e11d48',
+                    backgroundColor: '#fff'
+                  }
+                ]}
+              >
+                <Text style={[styles.statusText, { color: statusTone === 'ok' ? '#001a2d' : '#e11d48' }]}
+                >
+                  {statusMessage}
+                </Text>
+              </View>
+            ) : null}
+
             <Text style={styles.footerText}>Your trusted free real estate companion.</Text>
           </View>
         </View>
@@ -157,6 +180,14 @@ const styles = StyleSheet.create({
     borderRadius: 15, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' 
   },
   loginButtonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  statusBox: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12
+  },
+  statusText: { fontWeight: '600', textAlign: 'center' },
   footerText: { textAlign: 'center', color: '#666', marginTop: 20, fontSize: 12 }
 });
 

@@ -147,3 +147,23 @@ export const deleteMessage = async (req: AuthRequest, res: Response) => {
         })
     }
 }
+
+export const resetMessages = async (req: AuthRequest, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        const repo = AppDataSource.getRepository(Message);
+        await repo.delete([
+            { sender: { id: userId } },
+            { receiver: { id: userId } }
+        ]);
+
+        return res.status(200).json({ message: "Messages reset" });
+    } catch (err) {
+        const message = err instanceof Error ? err.message : 'An unknown error occurred';
+        return res.status(500).json({ message });
+    }
+}

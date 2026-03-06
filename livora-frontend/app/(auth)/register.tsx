@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   StyleSheet, View, Text, TextInput, TouchableOpacity, 
-  ImageBackground, SafeAreaView, ScrollView, StatusBar, Alert 
+  ImageBackground, SafeAreaView, ScrollView, StatusBar 
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -10,6 +10,7 @@ import { ApiError } from '../../lib/api';
 
 const SignupPage = () => {
   const router = useRouter();
+
   // Input states based on FR-1 and visual design [cite: 245]
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -18,6 +19,8 @@ const SignupPage = () => {
   const [accountType, setAccountType] = useState('Agent'); // Roles from Section 2.3 
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [statusTone, setStatusTone] = useState<'ok' | 'error'>('ok');
 
   const getSignupErrorMessage = (err: unknown): string => {
     if (err instanceof ApiError) {
@@ -37,8 +40,11 @@ const SignupPage = () => {
   };
 
   const handleSignup = async () => {
+    setStatusMessage(null);
+
     if (!name.trim() || !email.trim() || !password) {
-      Alert.alert('Missing details', 'Please enter your name, email, and password.');
+      setStatusTone('error');
+      setStatusMessage('Please enter your name, email, and password.');
       return;
     }
 
@@ -55,7 +61,8 @@ const SignupPage = () => {
       });
       router.replace('/');
     } catch (err: unknown) {
-      Alert.alert('Sign up failed', getSignupErrorMessage(err));
+      setStatusTone('error');
+      setStatusMessage(getSignupErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -164,8 +171,24 @@ const SignupPage = () => {
                 <TouchableOpacity style={styles.signupButton} onPress={handleSignup} disabled={isSubmitting}>
                   <Text style={styles.signupButtonText}>SIGN UP</Text>
                 </TouchableOpacity>
-              </View>
 
+                {statusMessage ? (
+                  <View
+                    style={[
+                      styles.statusBox,
+                      {
+                        borderColor: statusTone === 'ok' ? '#001a2d' : '#e11d48',
+                        backgroundColor: '#fff'
+                      }
+                    ]}
+                  >
+                    <Text style={[styles.statusText, { color: statusTone === 'ok' ? '#001a2d' : '#e11d48' }]}
+                    >
+                      {statusMessage}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
             </ScrollView>
           </SafeAreaView>
         </View>
@@ -217,7 +240,15 @@ const styles = StyleSheet.create({
   legalText: { textAlign: 'center', fontSize: 11, color: '#999', marginBottom: 25, lineHeight: 16 },
   boldText: { color: '#333', fontWeight: 'bold' },
   signupButton: { backgroundColor: '#001a2d', paddingVertical: 18, borderRadius: 15, alignItems: 'center' },
-  signupButtonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' }
+  signupButtonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  statusBox: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12
+  },
+  statusText: { fontWeight: '600', textAlign: 'center' }
 });
 
 export default SignupPage;

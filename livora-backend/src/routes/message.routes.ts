@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { deleteMessage, getMessagesForProperty, sendMessage } from "../controllers/message.controller";
+import { deleteMessage, getMessagesForProperty, resetMessages, sendMessage } from "../controllers/message.controller";
 import { authMiddleware } from "../middlewares/auth.middleware";
 import { validate } from "../middlewares/validate.middleware";
 import { deleteMessageParamsSchema, messageParamsSchema, sendMessageSchema } from "../validators/message.validator";
@@ -26,5 +26,11 @@ router.delete(
     authMiddleware(['buyer','seller','agent']),
     validate(deleteMessageParamsSchema, 'params'),
     deleteMessage
+)
+
+router.delete(
+    '/',
+    authMiddleware(['buyer','seller','agent']),
+    resetMessages
 )
 export default router;
