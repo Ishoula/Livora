@@ -3,7 +3,6 @@ import { AppDataSource } from "../config/db";
 import { Favorite } from "../entities/Favorite";    
 import { Property } from "../entities/Property";
 import { AuthRequest } from "../middlewares/auth.middleware";
-import { Auth } from "typeorm";
 
 export const addFavorite= async(req: AuthRequest, res: Response)=>{
     try{
@@ -27,7 +26,7 @@ export const addFavorite= async(req: AuthRequest, res: Response)=>{
     }
 }
 
-export const removeFavorite=async(req:any, res:Response)=>{
+export const removeFavorite=async(req: AuthRequest, res:Response)=>{
     const propertyId= Number(req.params.propertyId)
     if(isNaN(propertyId)){
         return res.status(400).json({message:"Invalid property Id"})
