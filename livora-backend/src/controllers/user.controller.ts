@@ -52,3 +52,20 @@ export const deleteUser = async (req: Request, res: Response) => {
         return res.status(500).json(message)
     }
 }
+
+export const deleteMe = async (req: any, res: Response) => {
+
+    try {
+        const id = Number(req.user?.id)
+        if (isNaN(id)) {
+            return res.status(400).json({ message: "Invalid userId" })
+        }
+
+        const repo = AppDataSource.getRepository(User)
+        await repo.delete(id)
+        res.status(200).json({ message: "Account successuflly deleted" })
+    } catch (err) {
+        const message = err instanceof Error ? err.message : "Internal server error"
+        return res.status(500).json(message)
+    }
+}

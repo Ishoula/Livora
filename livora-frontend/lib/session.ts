@@ -6,6 +6,7 @@ export type AuthTokens = {
 export type PublicUser = {
   id: number;
   fullName: string;
+  email: string;
   phone: string | null;
   role: string;
   createdAt: string;

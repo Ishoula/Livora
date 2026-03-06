@@ -3,15 +3,22 @@ export type ApiErrorPayload = {
   error?: string;
 };
 
+export type ApiErrorRequestInfo = {
+  method: string;
+  url: string;
+};
+
 export class ApiError extends Error {
   status: number;
   payload?: ApiErrorPayload;
+  request?: ApiErrorRequestInfo;
 
-  constructor(status: number, message: string, payload?: ApiErrorPayload) {
+  constructor(status: number, message: string, payload?: ApiErrorPayload, request?: ApiErrorRequestInfo) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.payload = payload;
+    this.request = request;
   }
 }
 
@@ -33,9 +40,10 @@ export type ApiRequestOptions = {
 
 export async function apiRequest<T>(options: ApiRequestOptions): Promise<T> {
   const url = `${API_BASE_URL}${options.path.startsWith('/') ? '' : '/'}${options.path}`;
+  const method = options.method ?? 'GET';
 
   const res = await fetch(url, {
-    method: options.method ?? 'GET',
+    method,
     headers: {
       Accept: 'application/json',
       ...(options.body ? { 'Content-Type': 'application/json' } : {}),
@@ -55,7 +63,12 @@ export async function apiRequest<T>(options: ApiRequestOptions): Promise<T> {
         ? String(payload.message || payload.error)
         : `Request failed with status ${res.status}`;
 
-    throw new ApiError(res.status, message, typeof payload === 'object' ? payload : undefined);
+    throw new ApiError(
+      res.status,
+      `${message} (${method} ${url})`,
+      typeof payload === 'object' ? payload : undefined,
+      { method, url }
+    );
   }
 
   return payload as T;

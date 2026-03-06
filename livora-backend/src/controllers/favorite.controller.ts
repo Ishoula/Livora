@@ -53,3 +53,14 @@ export const getFavorites = async (req: AuthRequest, res: Response) => {
         res.status(500).json({ message })
     }
 }
+
+export const resetFavorites = async (req: AuthRequest, res: Response) => {
+    try {
+        const favoriteRepo = AppDataSource.getRepository(Favorite)
+        await favoriteRepo.delete({ user: { id: req.user.id } })
+        res.status(200).json({ message: "Favorites reset" })
+    } catch (err) {
+        const message = err instanceof Error ? err.message : 'An unknown error occurred'
+        res.status(500).json({ message })
+    }
+}

@@ -5,21 +5,22 @@ import {
   Text,
   TextInput,
   FlatList,
-  SafeAreaView,
   StatusBar,
   TouchableOpacity,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { getSession } from "../../lib/session";
 import { apiRequestAuth } from "../../lib/apiAuth";
+import TopNavBar, { TOP_NAVBAR_BASE_HEIGHT } from "../../components/TopNavBar";
 
-type ApiUser = {
-  id: number;
-  fullName?: string;
-};
-
+// --- Types ---
+type ApiUser = { id: number; fullName?: string };
 type ApiMessage = {
   id: number;
   message: string;
@@ -30,11 +31,12 @@ type ApiMessage = {
 
 const MessagesPage = () => {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ propertyId?: string | string[] }>();
+  
   const [propertyIdText, setPropertyIdText] = useState("");
   const [receiverIdText, setReceiverIdText] = useState("");
   const [draft, setDraft] = useState("");
-
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +44,7 @@ const MessagesPage = () => {
 
   const session = getSession();
   const isLoggedIn = Boolean(session?.tokens?.accessToken);
+  const headerTotalHeight = insets.top + TOP_NAVBAR_BASE_HEIGHT;
 
   const propertyId = useMemo(() => {
     const n = Number(propertyIdText);
@@ -56,30 +59,14 @@ const MessagesPage = () => {
   }, [receiverIdText]);
 
   const loadMessages = async () => {
-    if (!isLoggedIn) {
-      Alert.alert("Login required", "Please log in to view messages.");
-      return;
-    }
-
-    if (!propertyId) {
-      Alert.alert(
-        "Missing details",
-        "Enter a valid propertyId to view messages.",
-      );
-      return;
-    }
-
+    if (!isLoggedIn || !propertyId) return;
     setLoading(true);
     setError(null);
-
     try {
       const apiMessages = await apiRequestAuth<ApiMessage[]>({
         path: "/api/messages/property/" + propertyId,
       });
-
-      apiMessages.sort(
-        (a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime(),
-      );
+      apiMessages.sort((a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime());
       setMessages(apiMessages);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load messages");
@@ -91,296 +78,190 @@ const MessagesPage = () => {
   useEffect(() => {
     const raw = params?.propertyId;
     const value = Array.isArray(raw) ? raw[0] : raw;
-    if (typeof value === "string" && value.trim()) {
-      setPropertyIdText(value);
-    }
+    if (typeof value === "string" && value.trim()) setPropertyIdText(value);
   }, [params?.propertyId]);
 
   useEffect(() => {
-    if (!isLoggedIn) return;
-    if (!propertyId) return;
-    void loadMessages();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (isLoggedIn && propertyId) loadMessages();
   }, [isLoggedIn, propertyId]);
 
   const sendMessage = async () => {
-    if (!isLoggedIn) {
-      Alert.alert("Login required", "Please log in to send messages.");
-      return;
-    }
-
-    if (!propertyId) {
-      Alert.alert(
-        "Missing details",
-        "Enter a valid propertyId before sending.",
-      );
-      return;
-    }
-
-    const message = draft.trim();
-    if (!message) {
-      Alert.alert("Empty message", "Type a message first.");
-      return;
-    }
-
+    if (!isLoggedIn || !propertyId || !draft.trim()) return;
     setSending(true);
-
     try {
-      const body: any = { message };
+      const body: any = { message: draft.trim() };
       if (receiverId !== undefined) body.receiverId = receiverId;
-
       await apiRequestAuth({
         method: "POST",
         path: "/api/messages/property/" + propertyId,
         body,
       });
-
       setDraft("");
       await loadMessages();
     } catch (e) {
-      Alert.alert(
-        "Message",
-        e instanceof Error ? e.message : "Failed to send message",
-      );
+      Alert.alert("Error", e instanceof Error ? e.message : "Failed to send");
     } finally {
       setSending(false);
     }
   };
 
-  useEffect(() => {
-    setMessages([]);
-    setError(null);
-  }, [propertyIdText]);
-
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { paddingTop: headerTotalHeight }]}>
       <StatusBar barStyle="dark-content" />
+      <TopNavBar />
 
-      <View style={styles.messageHeader}>
-        <View style={styles.headerContent}>
-          <Text style={styles.subHeader}>Messages</Text>
-          <Text style={styles.welcomeText}>Chat about properties</Text>
+      {/* --- Refined Header Section --- */}
+      <View style={styles.headerSection}>
+        <View>
+          <Text style={styles.headerTitle}>Messages</Text>
+          <View style={styles.titleUnderline} />
+        </View>
+        <View style={styles.statusBadge}>
+          <View style={[styles.statusDot, { backgroundColor: isLoggedIn ? '#22c55e' : '#94a3b8' }]} />
+          <Text style={styles.statusText}>{isLoggedIn ? 'Online' : 'Offline'}</Text>
         </View>
       </View>
 
       {!isLoggedIn ? (
-        <View style={styles.loggedOutBox}>
-          <Text style={styles.muted}>Log in to view and send messages.</Text>
-          <TouchableOpacity
-            style={styles.loginCta}
-            onPress={() => router.push("/(auth)/login")}
-          >
+        <View style={styles.centeredContent}>
+          <MaterialCommunityIcons name="message-lock-outline" size={64} color="#ccc" />
+          <Text style={styles.emptyText}>Log in to chat about properties</Text>
+          <TouchableOpacity style={styles.loginCta} onPress={() => router.push("/(auth)/login")}>
             <Text style={styles.loginCtaText}>Go to Login</Text>
           </TouchableOpacity>
         </View>
       ) : (
-        <View style={styles.controls}>
-          <View style={styles.row}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Property ID</Text>
-              <TextInput
-                value={propertyIdText}
-                onChangeText={setPropertyIdText}
-                placeholder="e.g. 12"
-                keyboardType="number-pad"
-                style={styles.input}
-              />
+        <>
+          {/* --- Context Bar (Property Selection) --- */}
+          <View style={styles.contextBar}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.contextLabel}>PROPERTY CONTEXT</Text>
+              <View style={styles.contextRow}>
+                <View style={styles.inputWrapper}>
+                  <Ionicons name="home-outline" size={14} color="#94a3b8" style={styles.inputIcon} />
+                  <TextInput
+                    value={propertyIdText}
+                    onChangeText={setPropertyIdText}
+                    placeholder="ID"
+                    keyboardType="number-pad"
+                    style={styles.propertyInput}
+                  />
+                </View>
+                <View style={[styles.inputWrapper, { flex: 1.5 }]}>
+                  <Ionicons name="person-outline" size={14} color="#94a3b8" style={styles.inputIcon} />
+                  <TextInput
+                    value={receiverIdText}
+                    onChangeText={setReceiverIdText}
+                    placeholder="Receiver (Opt)"
+                    keyboardType="number-pad"
+                    style={styles.propertyInput}
+                  />
+                </View>
+                <TouchableOpacity style={styles.refreshIconBtn} onPress={loadMessages} disabled={loading}>
+                  {loading ? <ActivityIndicator size="small" color="#001a2d" /> : <Ionicons name="refresh" size={20} color="#001a2d" />}
+                </TouchableOpacity>
+              </View>
             </View>
-            <TouchableOpacity
-              style={styles.loadBtn}
-              onPress={loadMessages}
-              disabled={loading}
-            >
-              <Ionicons name="refresh" size={18} color="#fff" />
-              <Text style={styles.loadBtnText}>
-                {loading ? "Loading" : "Load"}
-              </Text>
-            </TouchableOpacity>
           </View>
 
-          <Text style={styles.helper}>
-            Receiver ID is optional (buyers can leave it empty; owners replying
-            may need it).
-          </Text>
-          <TextInput
-            value={receiverIdText}
-            onChangeText={setReceiverIdText}
-            placeholder="Receiver ID (optional)"
-            keyboardType="number-pad"
-            style={styles.input}
+          <FlatList
+            data={messages}
+            keyExtractor={(item) => String(item.id)}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            renderItem={({ item }) => {
+              const isMine = item.sender?.id === session?.user?.id;
+              return (
+                <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleOther]}>
+                  {!isMine && <Text style={styles.bubbleTitleOther}>{item.sender?.fullName ?? `User ${item.sender?.id}`}</Text>}
+                  <Text style={isMine ? styles.bubbleTextMine : styles.bubbleTextOther}>{item.message}</Text>
+                  <Text style={isMine ? styles.bubbleMetaMine : styles.bubbleMetaOther}>
+                    {new Date(item.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                </View>
+              );
+            }}
+            ListEmptyComponent={
+              !loading ? (
+                <View style={styles.centeredContent}>
+                  <Ionicons name="chatbubbles-outline" size={48} color="#eee" />
+                  <Text style={styles.muted}>Select a property to start chatting</Text>
+                </View>
+              ) : null
+            }
           />
-        </View>
+
+          {/* --- Composer Area --- */}
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={100}>
+            <View style={styles.composer}>
+              <TextInput
+                value={draft}
+                onChangeText={setDraft}
+                placeholder="Type your message..."
+                style={styles.composerInput}
+                multiline
+              />
+              <TouchableOpacity style={[styles.sendBtn, !draft.trim() && { opacity: 0.5 }]} onPress={sendMessage} disabled={sending || !draft.trim()}>
+                {sending ? <ActivityIndicator color="#fff" /> : <Ionicons name="send" size={18} color="#fff" />}
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </>
       )}
-
-      {error ? (
-        <View style={{ paddingHorizontal: 20, paddingTop: 10 }}>
-          <Text style={{ color: "red" }}>{error}</Text>
-        </View>
-      ) : null}
-
-      <FlatList
-        data={messages}
-        keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => {
-          const isMine = item.sender?.id === session?.user?.id;
-          const senderName =
-            item.sender?.fullName ??
-            (isMine ? "You" : "User " + item.sender?.id);
-          return (
-            <View
-              style={[
-                styles.bubble,
-                isMine ? styles.bubbleMine : styles.bubbleOther,
-              ]}
-            >
-              <Text
-                style={
-                  isMine ? styles.bubbleTitleMine : styles.bubbleTitleOther
-                }
-              >
-                {senderName}
-              </Text>
-              <Text
-                style={isMine ? styles.bubbleTextMine : styles.bubbleTextOther}
-              >
-                {item.message}
-              </Text>
-              <Text
-                style={isMine ? styles.bubbleMetaMine : styles.bubbleMetaOther}
-              >
-                {new Date(item.sentAt).toLocaleString()}
-              </Text>
-            </View>
-          );
-        }}
-        ListEmptyComponent={
-          isLoggedIn && !loading ? (
-            <View style={{ paddingHorizontal: 20, paddingTop: 30 }}>
-              <Text style={styles.muted}>No messages loaded yet.</Text>
-            </View>
-          ) : null
-        }
-      />
-
-      {isLoggedIn ? (
-        <View style={styles.composer}>
-          <TextInput
-            value={draft}
-            onChangeText={setDraft}
-            placeholder="Type a message..."
-            style={styles.composerInput}
-            multiline
-          />
-          <TouchableOpacity
-            style={styles.sendBtn}
-            onPress={sendMessage}
-            disabled={sending}
-          >
-            <Ionicons name="send" size={18} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      ) : null}
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
-  messageHeader: {
-    padding: 20,
-    backgroundColor: "#a0c2f5",
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
-    marginBottom: 15,
+  
+  // Header
+  headerSection: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 15,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  headerContent: {
-    gap: 4,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 20,
-  },
-  welcomeText: { fontSize: 14, color: "#666" },
-  subHeader: { fontSize: 22, fontWeight: "bold", color: "#001a2d" },
-  loggedOutBox: { paddingHorizontal: 20, paddingTop: 10, gap: 10 },
-  muted: { color: "#666" },
-  controls: { paddingHorizontal: 20, paddingBottom: 10 },
-  row: { flexDirection: "row", gap: 12, alignItems: "flex-end" },
-  label: { color: "#333", fontWeight: "bold", marginBottom: 6 },
-  input: {
-    borderWidth: 1,
-    borderColor: "#eee",
-    backgroundColor: "#f7f7f7",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-  },
-  helper: { color: "#666", fontSize: 12, marginVertical: 10 },
-  loadBtn: {
-    backgroundColor: "#001a2d",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  loadBtnText: { color: "#fff", fontWeight: "bold" },
-  listContent: { paddingHorizontal: 20, paddingBottom: 100 },
-  bubble: {
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 10,
-    maxWidth: "90%",
-  },
-  bubbleMine: { backgroundColor: "#001a2d", alignSelf: "flex-end" },
-  bubbleOther: { backgroundColor: "#f0f0f0", alignSelf: "flex-start" },
-  bubbleTitleOther: { fontWeight: "bold", color: "#001a2d", marginBottom: 4 },
-  bubbleTitleMine: { fontWeight: "bold", color: "#fff", marginBottom: 4 },
-  bubbleTextMine: { color: "#fff" },
-  bubbleTextOther: { color: "#001a2d" },
-  bubbleMetaMine: { color: "#eeeeee", fontSize: 11, marginTop: 8 },
-  bubbleMetaOther: { color: "#666", fontSize: 11, marginTop: 8 },
-  composer: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    flexDirection: "row",
-    gap: 10,
-    padding: 12,
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
-  },
-  composerInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: "#eee",
-    backgroundColor: "#f7f7f7",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    maxHeight: 100,
-  },
-  sendBtn: {
-    backgroundColor: "#001a2d",
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  loginCta: {
-    backgroundColor: "#001a2d",
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  loginCtaText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
+  headerTitle: { fontSize: 28, fontWeight: '800', color: '#001a2d', letterSpacing: -0.5 },
+  titleUnderline: { height: 4, width: 30, backgroundColor: '#001a2d', marginTop: 4, borderRadius: 2 },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f1f5f9', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, gap: 6 },
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
+  statusText: { fontSize: 12, fontWeight: '600', color: '#475569' },
+
+  // Context Bar
+  contextBar: { paddingHorizontal: 20, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  inputGroup: { backgroundColor: '#f8fafc', borderRadius: 16, padding: 12, borderWidth: 1, borderColor: '#e2e8f0' },
+  contextLabel: { fontSize: 10, fontWeight: '800', color: '#94a3b8', marginBottom: 8, letterSpacing: 1 },
+  contextRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  inputWrapper: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0', paddingHorizontal: 8 },
+  inputIcon: { marginRight: 4 },
+  propertyInput: { flex: 1, paddingVertical: 8, fontSize: 14, color: '#001a2d' },
+  refreshIconBtn: { padding: 8, backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' },
+
+  // List & Bubbles
+  listContent: { paddingHorizontal: 20, paddingBottom: 20, paddingTop: 15 },
+  bubble: { borderRadius: 18, padding: 14, marginBottom: 12, maxWidth: '85%', elevation: 1, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, shadowOffset: { width: 0, height: 2 } },
+  bubbleMine: { backgroundColor: "#001a2d", alignSelf: "flex-end", borderBottomRightRadius: 4 },
+  bubbleOther: { backgroundColor: "#f1f5f9", alignSelf: "flex-start", borderBottomLeftRadius: 4 },
+  bubbleTitleOther: { fontWeight: "bold", color: "#001a2d", fontSize: 12, marginBottom: 4 },
+  bubbleTextMine: { color: "#fff", lineHeight: 20 },
+  bubbleTextOther: { color: "#001a2d", lineHeight: 20 },
+  bubbleMetaMine: { color: "rgba(255,255,255,0.6)", fontSize: 10, marginTop: 4, textAlign: 'right' },
+  bubbleMetaOther: { color: "#94a3b8", fontSize: 10, marginTop: 4 },
+
+  // Composer
+  composer: { flexDirection: "row", gap: 10, padding: 15, backgroundColor: "#fff", borderTopWidth: 1, borderTopColor: "#f1f5f9", alignItems: 'center' },
+  composerInput: { flex: 1, backgroundColor: "#f8fafc", borderRadius: 20, paddingHorizontal: 15, paddingVertical: 10, borderWidth: 1, borderColor: "#e2e8f0", maxHeight: 100 },
+  sendBtn: { backgroundColor: "#001a2d", width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
+
+  // Utilities
+  centeredContent: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40, marginTop: 40 },
+  emptyText: { color: '#666', fontSize: 16, marginTop: 12, textAlign: 'center' },
+  muted: { color: "#94a3b8", fontSize: 14, marginTop: 8 },
+  loginCta: { backgroundColor: "#001a2d", paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12, marginTop: 20 },
+  loginCtaText: { color: "#fff", fontWeight: "bold" },
 });
 
 export default MessagesPage;

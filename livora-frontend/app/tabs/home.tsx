@@ -7,21 +7,18 @@ import {
   TouchableOpacity,
   FlatList,
   Image,
-  SafeAreaView,
   StatusBar,
   Alert,
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 
 import { apiRequest } from "../../lib/api";
-import { logout } from "../../lib/auth";
 import { getSession } from "../../lib/session";
 import { apiRequestAuth } from "../../lib/apiAuth";
-
-// Constants for layout
-const STATUS_BAR_HEIGHT = StatusBar.currentHeight ?? 0;
+import TopNavBar, { TOP_NAVBAR_BASE_HEIGHT } from "../../components/TopNavBar";
 
 interface Property {
   id: number;
@@ -140,40 +137,20 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
 
 const HomePage = () => {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fullName, setFullName] = useState<string>("");
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
 
+  const headerTotalHeight = insets.top + TOP_NAVBAR_BASE_HEIGHT;
+
   const goToMessages = (propertyId: number) => {
     router.push({
       pathname: "/tabs/messages",
       params: { propertyId: String(propertyId) },
     });
-  };
-
-  const goToNotifications = () => router.push("/tabs/notifications");
-  const goToProfile = () => router.push("/tabs/profile");
-  const goToSettings = () => router.push("/tabs/settings");
-
-  const handleLogout = async () => {
-    const session = getSession();
-    const refreshToken = session?.tokens?.refreshToken;
-    if (!refreshToken) {
-      Alert.alert("Logout", "You are not logged in.");
-      return;
-    }
-
-    try {
-      await logout(refreshToken);
-      router.replace("/login");
-    } catch (e) {
-      Alert.alert(
-        "Logout failed",
-        e instanceof Error ? e.message : "Failed to logout"
-      );
-    }
   };
 
   const sortedProperties = useMemo(() => {
@@ -286,27 +263,10 @@ const HomePage = () => {
   }, []);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { paddingTop: headerTotalHeight }]}>
       <StatusBar barStyle="dark-content" />
 
-      {/* Top Navbar Section: Aligned to Right */}
-      <View style={styles.topNavbar}>
-        <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.iconBtn} onPress={goToNotifications}>
-            <Ionicons name="notifications-outline" size={22} color="#001a2d" />
-            <View style={styles.notifBadge} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn} onPress={goToProfile}>
-            <Ionicons name="person-circle-outline" size={24} color="#001a2d" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn} onPress={goToSettings}>
-            <Ionicons name="settings-outline" size={22} color="#001a2d" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={22} color="#001a2d" />
-          </TouchableOpacity>
-        </View>
-      </View>
+      <TopNavBar />
 
       {/* Welcome Message Section: Sits below Navbar */}
       <View style={styles.welcomeBox}>
@@ -361,42 +321,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
-    paddingTop: 8,
-  },
-  topNavbar: {
-    flexDirection: "row",
-    justifyContent: "flex-end", // Align icons to the right
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  iconBtn: {
-    backgroundColor: "#f0f0f0",
-    padding: 10,
-    borderRadius: 12,
-  },
-  notifBadge: {
-    position: "absolute",
-    right: 10,
-    top: 10,
-    width: 8,
-    height: 8,
-    backgroundColor: "red",
-    borderRadius: 4,
   },
   welcomeBox: {
     backgroundColor: "#e0ebfc",
-    boxShadow: "0 4px 6px #001a2d",
     padding: 20,
     borderRadius: 20,
     marginHorizontal: 20,
     marginBottom: 20,
     gap: 4,
+    shadowColor: "#001a2d",
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
   welcomeMessageText: {
     fontSize: 16,

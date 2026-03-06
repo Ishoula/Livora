@@ -1,21 +1,27 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from "react";
 import {
   Alert,
   FlatList,
-  SafeAreaView,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
-import { useRouter } from 'expo-router';
+  View,
+  ActivityIndicator,
+} from "react-native";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
+import { useRouter } from "expo-router";
 
-import { apiRequestAuth } from '../../lib/apiAuth';
-import { getSession } from '../../lib/session';
+import { apiRequestAuth } from "../../lib/apiAuth";
+import { getSession } from "../../lib/session";
+import TopNavBar, { TOP_NAVBAR_BASE_HEIGHT } from "../../components/TopNavBar";
 
+// --- Types ---
 type ApiNotification = {
   id: number;
   message: string;
@@ -25,24 +31,32 @@ type ApiNotification = {
   createdAt: string;
 };
 
+// --- Helpers ---
 const formatDateTime = (value: string) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
+  return date.toLocaleDateString([], {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 };
 
 const NotificationsPage = () => {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<ApiNotification[]>([]);
 
   const session = getSession();
   const isLoggedIn = Boolean(session?.tokens?.accessToken);
+  const headerTotalHeight = insets.top + TOP_NAVBAR_BASE_HEIGHT;
 
   const unreadCount = useMemo(
     () => notifications.reduce((count, n) => (n.isRead ? count : count + 1), 0),
-    [notifications]
+    [notifications],
   );
 
   const loadNotifications = useCallback(async () => {
@@ -57,200 +71,361 @@ const NotificationsPage = () => {
 
     try {
       const data = await apiRequestAuth<ApiNotification[]>({
-        path: '/api/notifications'
+        path: "/api/notifications",
       });
       setNotifications(Array.isArray(data) ? data : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load notifications');
+      setError(e instanceof Error ? e.message : "Failed to load notifications");
     } finally {
       setLoading(false);
     }
   }, [isLoggedIn]);
 
-  const markRead = useCallback(async (id: number) => {
-    if (!isLoggedIn) return;
+  const markRead = useCallback(
+    async (id: number) => {
+      if (!isLoggedIn) return;
 
-    const prev = notifications;
-    setNotifications((items) => items.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+      const prev = notifications;
+      setNotifications((items) =>
+        items.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
+      );
 
-    try {
-      await apiRequestAuth({
-        method: 'PUT',
-        path: `/api/notifications/${id}/read`
-      });
-    } catch (e) {
-      setNotifications(prev);
-      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to mark as read');
-    }
-  }, [isLoggedIn, notifications]);
+      try {
+        await apiRequestAuth({
+          method: "PUT",
+          path: `/api/notifications/${id}/read`,
+        });
+      } catch (e) {
+        setNotifications(prev);
+        Alert.alert(
+          "Error",
+          e instanceof Error ? e.message : "Failed to mark as read",
+        );
+      }
+    },
+    [isLoggedIn, notifications],
+  );
 
-  const openNotification = useCallback(async (n: ApiNotification) => {
-    if (!isLoggedIn) return;
+  const openNotification = useCallback(
+    async (n: ApiNotification) => {
+      if (!isLoggedIn) return;
 
-    if (!n.isRead) {
-      await markRead(n.id);
-    }
+      if (!n.isRead) {
+        await markRead(n.id);
+      }
 
-    if (n.propertyId) {
-      router.push({ pathname: '/tabs/messages', params: { propertyId: String(n.propertyId) } });
-      return;
-    }
+      if (n.propertyId) {
+        router.push({
+          pathname: "/tabs/messages",
+          params: { propertyId: String(n.propertyId) },
+        });
+        return;
+      }
 
-    Alert.alert('Notification', n.message);
-  }, [isLoggedIn, markRead, router]);
+      Alert.alert("Notification", n.message);
+    },
+    [isLoggedIn, markRead, router],
+  );
 
-  const deleteItem = useCallback(async (id: number) => {
-    if (!isLoggedIn) return;
+  const deleteItem = useCallback(
+    async (id: number) => {
+      if (!isLoggedIn) return;
 
-    const prev = notifications;
-    setNotifications((items) => items.filter((n) => n.id !== id));
+      const prev = notifications;
+      setNotifications((items) => items.filter((n) => n.id !== id));
 
-    try {
-      await apiRequestAuth({
-        method: 'DELETE',
-        path: `/api/notifications/${id}`
-      });
-    } catch (e) {
-      setNotifications(prev);
-      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to delete notification');
-    }
-  }, [isLoggedIn, notifications]);
+      try {
+        await apiRequestAuth({
+          method: "DELETE",
+          path: `/api/notifications/${id}`,
+        });
+      } catch (e) {
+        setNotifications(prev);
+        Alert.alert(
+          "Error",
+          e instanceof Error ? e.message : "Failed to delete",
+        );
+      }
+    },
+    [isLoggedIn, notifications],
+  );
 
   useFocusEffect(
     useCallback(() => {
       void loadNotifications();
-    }, [loadNotifications])
+    }, [loadNotifications]),
   );
 
-  if (!isLoggedIn) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" />
-        <View style={styles.header}>
-          <Text style={styles.title}>Notifications</Text>
-        </View>
-        <View style={styles.center}>
-          <Text style={styles.muted}>Log in to view notifications.</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { paddingTop: headerTotalHeight }]}>
       <StatusBar barStyle="dark-content" />
+      <TopNavBar />
 
-      <View style={styles.header}>
+      {/* --- Unified Header --- */}
+      <View style={styles.headerSection}>
         <View>
-          <Text style={styles.title}>Notifications</Text>
-          <Text style={styles.subtitle}>{unreadCount ? `${unreadCount} unread` : 'All caught up'}</Text>
+          <Text style={styles.headerTitle}>Notifications</Text>
+          <View style={styles.titleUnderline} />
         </View>
-
-        <TouchableOpacity style={styles.refreshBtn} onPress={() => void loadNotifications()} disabled={loading}>
-          <Ionicons name="refresh" size={20} color="#001a2d" />
+        <TouchableOpacity
+          style={styles.refreshIconBtn}
+          onPress={() => void loadNotifications()}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator size="small" color="#001a2d" />
+          ) : (
+            <Ionicons name="refresh" size={20} color="#001a2d" />
+          )}
         </TouchableOpacity>
       </View>
 
-      {loading || error ? (
-        <View style={styles.statusArea}>
-          {loading ? <Text style={styles.muted}>Loading...</Text> : null}
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-        </View>
-      ) : null}
-
-      <FlatList
-        data={notifications}
-        keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={notifications.length ? styles.listContent : styles.emptyContent}
-        renderItem={({ item }) => (
+      {!isLoggedIn ? (
+        <View style={styles.centeredContent}>
+          <MaterialCommunityIcons
+            name="bell-off-outline"
+            size={64}
+            color="#ccc"
+          />
+          <Text style={styles.emptyText}>Log in to view notifications.</Text>
           <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={() => void openNotification(item)}
-            style={[styles.card, item.isRead ? styles.cardRead : styles.cardUnread]}
+            style={styles.loginCta}
+            onPress={() => router.push("/(auth)/login")}
           >
-            <View style={styles.cardTopRow}>
-              <Ionicons
-                name={item.isRead ? 'notifications-outline' : 'notifications'}
-                size={18}
-                color={item.isRead ? '#666' : '#001a2d'}
-              />
-              <Text style={styles.time}>{formatDateTime(item.createdAt)}</Text>
-            </View>
-
-            <Text style={styles.message}>{item.message}</Text>
-
-            <View style={styles.actionsRow}>
-              <TouchableOpacity
-                style={[styles.actionBtn, item.isRead ? styles.actionBtnDisabled : null]}
-                onPress={() => void markRead(item.id)}
-                disabled={item.isRead}
-              >
-                <Ionicons name="checkmark-done" size={16} color={item.isRead ? '#999' : '#001a2d'} />
-                <Text style={[styles.actionText, item.isRead ? styles.actionTextDisabled : null]}>Read</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.actionBtn} onPress={() => void deleteItem(item.id)}>
-                <Ionicons name="trash-outline" size={16} color="#b91c1c" />
-                <Text style={[styles.actionText, { color: '#b91c1c' }]}>Delete</Text>
-              </TouchableOpacity>
-            </View>
+            <Text style={styles.loginCtaText}>Go to Login</Text>
           </TouchableOpacity>
-        )}
-        ListEmptyComponent={
-          <View style={styles.center}>
-            <Text style={styles.muted}>No notifications yet.</Text>
-          </View>
-        }
-      />
+        </View>
+      ) : (
+        <FlatList
+          data={notifications}
+          keyExtractor={(item) => String(item.id)}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          ListHeaderComponent={
+            unreadCount > 0 ? (
+              <View style={styles.unreadBanner}>
+                <Text style={styles.unreadBannerText}>
+                  You have {unreadCount} unread alerts
+                </Text>
+              </View>
+            ) : null
+          }
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => void openNotification(item)}
+              style={[
+                styles.notificationCard,
+                !item.isRead && styles.cardUnread,
+              ]}
+            >
+              <View style={styles.cardHeader}>
+                <View style={styles.iconContainer}>
+                  <View
+                    style={[
+                      styles.iconCircle,
+                      { backgroundColor: item.isRead ? "#f1f5f9" : "#001a2d" },
+                    ]}
+                  >
+                    <Ionicons
+                      name={
+                        item.propertyId
+                          ? "chatbubble-ellipses"
+                          : "notifications"
+                      }
+                      size={16}
+                      color={item.isRead ? "#94a3b8" : "#fff"}
+                    />
+                  </View>
+                  {!item.isRead && <View style={styles.unreadDot} />}
+                </View>
+                <Text style={styles.timeText}>
+                  {formatDateTime(item.createdAt)}
+                </Text>
+              </View>
+
+              <Text
+                style={[
+                  styles.messageText,
+                  !item.isRead && styles.messageUnread,
+                ]}
+              >
+                {item.message}
+              </Text>
+
+              <View style={styles.cardFooter}>
+                <TouchableOpacity
+                  style={styles.footerAction}
+                  onPress={() => void deleteItem(item.id)}
+                >
+                  <Ionicons name="trash-outline" size={14} color="#e11d48" />
+                  <Text style={styles.deleteText}>Remove</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          )}
+          ListEmptyComponent={
+            !loading ? (
+              <View style={styles.centeredContent}>
+                <Ionicons name="notifications-outline" size={64} color="#eee" />
+                <Text style={styles.emptyText}>No notifications yet.</Text>
+              </View>
+            ) : null
+          }
+        />
+      )}
     </SafeAreaView>
   );
 };
 
+// --- Modern Real Estate Styles ---
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20
+  container: { flex: 1, backgroundColor: "#fff" },
+
+  // Header Section
+  headerSection: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 20,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
-  title: { fontSize: 20, fontWeight: 'bold', color: '#001a2d' },
-  subtitle: { marginTop: 4, fontSize: 12, color: '#666' },
-  refreshBtn: {
-    backgroundColor: '#f0f0f0',
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#001a2d",
+    letterSpacing: -0.5,
+  },
+  titleUnderline: {
+    height: 4,
+    width: 30,
+    backgroundColor: "#001a2d",
+    letterSpacing: -0.5,
+  },
+  refreshIconBtn: {
     padding: 10,
-    borderRadius: 12
+    backgroundColor: "#f8fafc",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
   },
-  statusArea: { paddingHorizontal: 20, paddingBottom: 8 },
-  muted: { color: '#666' },
-  error: { color: '#b91c1c' },
-  listContent: { paddingHorizontal: 20, paddingBottom: 20 },
-  emptyContent: { flexGrow: 1, paddingHorizontal: 20, paddingBottom: 20 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  card: {
-    borderRadius: 14,
-    padding: 14,
+
+  // Banner
+  unreadBanner: {
+    backgroundColor: "rgba(225, 29, 72, 0.05)",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "rgba(225, 29, 72, 0.1)",
+  },
+  unreadBannerText: {
+    color: "#e11d48",
+    fontSize: 13,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+
+  // Notification Cards
+  listContent: { paddingHorizontal: 20, paddingBottom: 40 },
+  notificationCard: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 16,
     marginBottom: 12,
-    borderWidth: 1
+    borderWidth: 1,
+    borderColor: "#f1f5f9",
+    shadowColor: "#000",
+    shadowOpacity: 0.02,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
-  cardUnread: { backgroundColor: '#f8fafc', borderColor: '#cbd5e1' },
-  cardRead: { backgroundColor: '#fff', borderColor: '#e5e7eb' },
-  cardTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  time: { fontSize: 11, color: '#666' },
-  message: { marginTop: 10, fontSize: 14, color: '#001a2d' },
-  actionsRow: { flexDirection: 'row', gap: 12, marginTop: 12 },
-  actionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#f3f4f6',
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 10
+  cardUnread: {
+    borderColor: "#e2e8f0",
+    backgroundColor: "#f8fafc",
   },
-  actionBtnDisabled: { opacity: 0.6 },
-  actionText: { fontSize: 12, color: '#001a2d' },
-  actionTextDisabled: { color: '#999' }
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  iconContainer: { flexDirection: "row", alignItems: "center" },
+  iconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#e11d48",
+    position: "absolute",
+    top: -2,
+    right: -2,
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  timeText: { fontSize: 11, color: "#94a3b8", fontWeight: "600" },
+  messageText: {
+    fontSize: 14,
+    color: "#475569",
+    lineHeight: 20,
+  },
+  messageUnread: {
+    color: "#001a2d",
+    fontWeight: "600",
+  },
+
+  // Card Footer
+  cardFooter: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#f1f5f9",
+    flexDirection: "row",
+    justifyContent: "flex-end",
+  },
+  footerAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  deleteText: {
+    fontSize: 12,
+    color: "#e11d48",
+    fontWeight: "600",
+  },
+
+  // Utilities & Empty States
+  centeredContent: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 80,
+    paddingHorizontal: 40,
+  },
+  emptyText: {
+    color: "#94a3b8",
+    fontSize: 16,
+    marginTop: 16,
+    fontWeight: "500",
+    textAlign: "center",
+  },
+  loginCta: {
+    backgroundColor: "#001a2d",
+    paddingHorizontal: 30,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginTop: 20,
+  },
+  loginCtaText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
 });
 
 export default NotificationsPage;
