@@ -1,10 +1,12 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 
 import { logout } from '../lib/auth';
+import { apiRequestAuth } from '../lib/apiAuth';
 import { getSession } from '../lib/session';
 import { useTheme } from '../lib/theme';
 
@@ -14,14 +16,47 @@ export type TopNavBarProps = {
   showBadge?: boolean;
 };
 
+type ApiNotification = {
+  id: number;
+  isRead: boolean;
+};
+
 const TopNavBar = ({ showBadge = true }: TopNavBarProps) => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
 
+  const session = getSession();
+  const isLoggedIn = Boolean(session?.tokens?.accessToken);
+
   const goToNotifications = useCallback(() => router.push('/tabs/notifications'), [router]);
   const goToProfile = useCallback(() => router.push('/tabs/profile'), [router]);
   const goToSettings = useCallback(() => router.push('/tabs/settings'), [router]);
+
+  const [hasUnread, setHasUnread] = useState(false);
+
+  const shouldShowBadge = useMemo(() => showBadge && isLoggedIn && hasUnread, [showBadge, isLoggedIn, hasUnread]);
+
+  const loadUnreadState = useCallback(async () => {
+    if (!isLoggedIn) {
+      setHasUnread(false);
+      return;
+    }
+
+    try {
+      const data = await apiRequestAuth<ApiNotification[]>({ path: '/api/notifications' });
+      const unread = Array.isArray(data) ? data.some((n) => !n.isRead) : false;
+      setHasUnread(unread);
+    } catch {
+      setHasUnread(false);
+    }
+  }, [isLoggedIn]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadUnreadState();
+    }, [loadUnreadState])
+  );
 
   const handleLogout = useCallback(async () => {
     const session = getSession();
@@ -56,7 +91,7 @@ const TopNavBar = ({ showBadge = true }: TopNavBarProps) => {
           onPress={goToNotifications}
         >
           <Ionicons name="notifications-outline" size={22} color={colors.text} />
-          {showBadge ? <View style={styles.notifBadge} /> : null}
+          {shouldShowBadge ? <View style={styles.notifBadge} /> : null}
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.iconBtn, { backgroundColor: colors.surfaceMuted }]}
