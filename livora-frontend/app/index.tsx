@@ -31,7 +31,7 @@ const WelcomePage = () => {
               {/* UC-2: Login */}
               <TouchableOpacity 
                 style={styles.loginButton}
-                onPress={() => router.push('/(auth)/login')}
+                onPress={() => router.push('./(auth)/login')}
               >
                 <Text style={styles.loginButtonText}>Sign In</Text>
               </TouchableOpacity>
@@ -39,7 +39,7 @@ const WelcomePage = () => {
               {/* UC-1: Register */}
               <TouchableOpacity 
                 style={styles.registerButton}
-                onPress={() => router.push('/(auth)/register')}
+                onPress={() => router.push('./(auth)/register')}
               >
                 <Text style={styles.registerButtonText}>Create Account</Text>
               </TouchableOpacity>

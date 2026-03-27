@@ -26,7 +26,7 @@ const getBaseUrl = () => {
   const envBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
   if (envBaseUrl) return envBaseUrl.replace(/\/$/, '');
 
-  return 'http://localhost:2727';
+  return 'http://10.11.74.62:2727';
 };
 
 export const API_BASE_URL = getBaseUrl();

@@ -7,11 +7,12 @@ import {
   FlatList,
   StatusBar,
   TouchableOpacity,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Modal,
 } from "react-native";
+
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -19,21 +20,25 @@ import { getSession } from "../../lib/session";
 import { apiRequestAuth } from "../../lib/apiAuth";
 import TopNavBar, { TOP_NAVBAR_BASE_HEIGHT } from "../../components/TopNavBar";
 
-// --- Types ---
-type ApiUser = { id: number; fullName?: string };
+type ApiUser = {
+  id: number;
+  fullName?: string | null;
+};
+
 type ApiMessage = {
   id: number;
   message: string;
-  sender: ApiUser;
-  receiver: ApiUser;
   sentAt: string;
+  sender?: ApiUser | null;
+  receiver?: ApiUser | null;
 };
 
 const MessagesPage = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+
   const params = useLocalSearchParams<{ propertyId?: string | string[] }>();
-  
+
   const [propertyIdText, setPropertyIdText] = useState("");
   const [receiverIdText, setReceiverIdText] = useState("");
   const [draft, setDraft] = useState("");
@@ -41,6 +46,12 @@ const MessagesPage = () => {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [messages, setMessages] = useState<ApiMessage[]>([]);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [statusTone, setStatusTone] = useState<'ok' | 'error'>('ok');
+
+  const [replyModalOpen, setReplyModalOpen] = useState(false);
+  const [selectedMessage, setSelectedMessage] = useState<ApiMessage | null>(null);
+  const [replyToUser, setReplyToUser] = useState<ApiUser | null>(null);
 
   const session = getSession();
   const isLoggedIn = Boolean(session?.tokens?.accessToken);
@@ -58,10 +69,16 @@ const MessagesPage = () => {
     return Number.isFinite(n) && n > 0 ? n : undefined;
   }, [receiverIdText]);
 
+  const replyTargetLabel = useMemo(() => {
+    if (!replyToUser?.id) return null;
+    return replyToUser.fullName?.trim() ? replyToUser.fullName : `User ${replyToUser.id}`;
+  }, [replyToUser]);
+
   const loadMessages = async () => {
     if (!isLoggedIn || !propertyId) return;
     setLoading(true);
     setError(null);
+    setStatusMessage(null);
     try {
       const apiMessages = await apiRequestAuth<ApiMessage[]>({
         path: "/api/messages/property/" + propertyId,
@@ -69,7 +86,10 @@ const MessagesPage = () => {
       apiMessages.sort((a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime());
       setMessages(apiMessages);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load messages");
+      const msg = e instanceof Error ? e.message : "Failed to load messages";
+      setError(msg);
+      setStatusTone('error');
+      setStatusMessage(msg);
     } finally {
       setLoading(false);
     }
@@ -88,6 +108,7 @@ const MessagesPage = () => {
   const sendMessage = async () => {
     if (!isLoggedIn || !propertyId || !draft.trim()) return;
     setSending(true);
+    setStatusMessage(null);
     try {
       const body: any = { message: draft.trim() };
       if (receiverId !== undefined) body.receiverId = receiverId;
@@ -97,12 +118,39 @@ const MessagesPage = () => {
         body,
       });
       setDraft("");
+      setReplyToUser(null);
+      setReceiverIdText("");
       await loadMessages();
     } catch (e) {
-      Alert.alert("Error", e instanceof Error ? e.message : "Failed to send");
+      const msg = e instanceof Error ? e.message : "Failed to send";
+      setStatusTone('error');
+      setStatusMessage(msg);
     } finally {
       setSending(false);
     }
+  };
+
+  const openReplyPicker = (item: ApiMessage) => {
+    setSelectedMessage(item);
+    setReplyModalOpen(true);
+  };
+
+  const chooseReply = () => {
+    if (!selectedMessage) {
+      setReplyModalOpen(false);
+      return;
+    }
+
+    const isMine = selectedMessage.sender?.id === session?.user?.id;
+    const target = isMine ? selectedMessage.receiver : selectedMessage.sender;
+    if (!target?.id) {
+      setReplyModalOpen(false);
+      return;
+    }
+
+    setReplyToUser(target);
+    setReceiverIdText(String(target.id));
+    setReplyModalOpen(false);
   };
 
   return (
@@ -132,6 +180,23 @@ const MessagesPage = () => {
         </View>
       ) : (
         <>
+          {statusMessage ? (
+            <View
+              style={[
+                styles.statusBox,
+                {
+                  borderColor: statusTone === 'ok' ? '#001a2d' : '#e11d48',
+                  backgroundColor: '#fff'
+                }
+              ]}
+            >
+              <Text style={[styles.statusTextBox, { color: statusTone === 'ok' ? '#001a2d' : '#e11d48' }]}
+              >
+                {statusMessage}
+              </Text>
+            </View>
+          ) : null}
+
           {/* --- Context Bar (Property Selection) --- */}
           <View style={styles.contextBar}>
             <View style={styles.inputGroup}>
@@ -172,15 +237,20 @@ const MessagesPage = () => {
             renderItem={({ item }) => {
               const isMine = item.sender?.id === session?.user?.id;
               return (
-                <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleOther]}>
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => openReplyPicker(item)}
+                  style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleOther]}
+                >
                   {!isMine && <Text style={styles.bubbleTitleOther}>{item.sender?.fullName ?? `User ${item.sender?.id}`}</Text>}
                   <Text style={isMine ? styles.bubbleTextMine : styles.bubbleTextOther}>{item.message}</Text>
                   <Text style={isMine ? styles.bubbleMetaMine : styles.bubbleMetaOther}>
                     {new Date(item.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </Text>
-                </View>
+                </TouchableOpacity>
               );
             }}
+
             ListEmptyComponent={
               !loading ? (
                 <View style={styles.centeredContent}>
@@ -194,18 +264,72 @@ const MessagesPage = () => {
           {/* --- Composer Area --- */}
           <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={100}>
             <View style={styles.composer}>
-              <TextInput
-                value={draft}
-                onChangeText={setDraft}
-                placeholder="Type your message..."
-                style={styles.composerInput}
-                multiline
-              />
-              <TouchableOpacity style={[styles.sendBtn, !draft.trim() && { opacity: 0.5 }]} onPress={sendMessage} disabled={sending || !draft.trim()}>
-                {sending ? <ActivityIndicator color="#fff" /> : <Ionicons name="send" size={18} color="#fff" />}
-              </TouchableOpacity>
+              {replyTargetLabel ? (
+                <View style={styles.replyBanner}>
+                  <View style={styles.replyBannerLeft}>
+                    <Ionicons name="return-up-forward-outline" size={14} color="#001a2d" />
+                    <Text style={styles.replyBannerText}>Replying to {replyTargetLabel}</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setReplyToUser(null);
+                      setReceiverIdText("");
+                    }}
+                  >
+                    <Ionicons name="close" size={16} color="#001a2d" />
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+              <View style={styles.composerRow}>
+                <TextInput
+                  value={draft}
+                  onChangeText={setDraft}
+                  placeholder="Type your message..."
+                  style={styles.composerInput}
+                  multiline
+                />
+                <TouchableOpacity
+                  style={[styles.sendBtn, !draft.trim() && { opacity: 0.5 }]}
+                  onPress={sendMessage}
+                  disabled={sending || !draft.trim()}
+                >
+                  {sending ? <ActivityIndicator color="#fff" /> : <Ionicons name="send" size={18} color="#fff" />}
+                </TouchableOpacity>
+              </View>
             </View>
           </KeyboardAvoidingView>
+
+          <Modal
+            visible={replyModalOpen}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setReplyModalOpen(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalCard}>
+                <Text style={styles.modalTitle}>Message</Text>
+                <Text style={styles.modalBody} numberOfLines={6}>
+                  {selectedMessage?.message ?? ''}
+                </Text>
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={[styles.modalBtn, styles.modalBtnNeutral]}
+                    onPress={() => setReplyModalOpen(false)}
+                    disabled={sending}
+                  >
+                    <Text style={styles.modalBtnTextNeutral}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalBtn, styles.modalBtnPrimary]}
+                    onPress={chooseReply}
+                    disabled={sending}
+                  >
+                    <Text style={styles.modalBtnTextPrimary}>Reply</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
         </>
       )}
     </SafeAreaView>
@@ -214,7 +338,7 @@ const MessagesPage = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
-  
+
   // Header
   headerSection: {
     paddingHorizontal: 20,
@@ -232,6 +356,15 @@ const styles = StyleSheet.create({
 
   // Context Bar
   contextBar: { paddingHorizontal: 20, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  statusBox: {
+    marginHorizontal: 20,
+    marginTop: 12,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12
+  },
+  statusTextBox: { fontWeight: '700', textAlign: 'center' },
   inputGroup: { backgroundColor: '#f8fafc', borderRadius: 16, padding: 12, borderWidth: 1, borderColor: '#e2e8f0' },
   contextLabel: { fontSize: 10, fontWeight: '800', color: '#94a3b8', marginBottom: 8, letterSpacing: 1 },
   contextRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
@@ -245,6 +378,7 @@ const styles = StyleSheet.create({
   bubble: { borderRadius: 18, padding: 14, marginBottom: 12, maxWidth: '85%', elevation: 1, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, shadowOffset: { width: 0, height: 2 } },
   bubbleMine: { backgroundColor: "#001a2d", alignSelf: "flex-end", borderBottomRightRadius: 4 },
   bubbleOther: { backgroundColor: "#f1f5f9", alignSelf: "flex-start", borderBottomLeftRadius: 4 },
+  bubbleTitleMine: { fontWeight: "bold", color: "rgba(255,255,255,0.85)", fontSize: 12, marginBottom: 4 },
   bubbleTitleOther: { fontWeight: "bold", color: "#001a2d", fontSize: 12, marginBottom: 4 },
   bubbleTextMine: { color: "#fff", lineHeight: 20 },
   bubbleTextOther: { color: "#001a2d", lineHeight: 20 },
@@ -252,9 +386,36 @@ const styles = StyleSheet.create({
   bubbleMetaOther: { color: "#94a3b8", fontSize: 10, marginTop: 4 },
 
   // Composer
-  composer: { flexDirection: "row", gap: 10, padding: 15, backgroundColor: "#fff", borderTopWidth: 1, borderTopColor: "#f1f5f9", alignItems: 'center' },
+  composer: { padding: 15, backgroundColor: "#fff", borderTopWidth: 1, borderTopColor: "#f1f5f9" },
+  composerRow: { flexDirection: "row", gap: 10, alignItems: 'center' },
+  replyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    marginBottom: 10
+  },
+  replyBannerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  replyBannerText: { color: '#001a2d', fontWeight: '700', fontSize: 12 },
   composerInput: { flex: 1, backgroundColor: "#f8fafc", borderRadius: 20, paddingHorizontal: 15, paddingVertical: 10, borderWidth: 1, borderColor: "#e2e8f0", maxHeight: 100 },
   sendBtn: { backgroundColor: "#001a2d", width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
+
+  // Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', padding: 20 },
+  modalCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#e2e8f0' },
+  modalTitle: { fontSize: 16, fontWeight: '800', color: '#001a2d' },
+  modalBody: { marginTop: 8, color: '#475569', fontWeight: '600', fontSize: 13, lineHeight: 18 },
+  modalActions: { marginTop: 14, flexDirection: 'row', gap: 10 },
+  modalBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
+  modalBtnNeutral: { backgroundColor: '#f1f5f9' },
+  modalBtnPrimary: { backgroundColor: '#001a2d' },
+  modalBtnTextNeutral: { color: '#001a2d', fontWeight: '800' },
+  modalBtnTextPrimary: { color: '#fff', fontWeight: '800' },
 
   // Utilities
   centeredContent: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40, marginTop: 40 },
